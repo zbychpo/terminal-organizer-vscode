@@ -1,6 +1,6 @@
 {
     "name": "terminal-organizer-vscode",
-    "displayName": "Terminal Organizer",
+    "displayName": "Terminal Organizer VSCode",
     "description": "Elevate your terminal experience! Effortlessly configuration, seamlessly restore your last session, and manage sessions with ease. Personalize your workspace with colorful themes and boost productivity by importing commands swiftly.",
     "icon": "assets/logo.png",
     "version": "1.0.0",
