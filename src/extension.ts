@@ -17,8 +17,7 @@ import { removeVariableAsync } from './commands/removeVariableAsync';
 import { runTerminalByNameAsync } from './commands/runTerminalByNameAsync';
 import { saveAsync } from './commands/saveAsync';
 import { Configuration } from './configuration/configuration';
-import { configFileVersions } from './configuration/interface';
-import { registerSchemaProvider } from './configuration/schemaProvider';
+import { registerSchemaProvider, schemaUri } from './configuration/schemaProvider';
 import { TreeProvider } from './explorer/tree-provider';
 import { extCommands, ACTIVITY_VIEW_ID, sysCommands, constants } from './utils/constants';
 
@@ -143,7 +142,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   Configuration.watch(() => treeProvider.refresh());
   const { $schema = "", activateOnStartup = false, active } = await Configuration.load();
-  if ($schema && !$schema.includes(configFileVersions.latest)) {
+  if ($schema && $schema !== schemaUri.toString()) {
     await vscode.commands.executeCommand(extCommands.migrate);
   }
   if (activateOnStartup) {

@@ -3,7 +3,7 @@
     "displayName": "Terminal Organizer VSCode",
     "description": "Elevate your terminal experience! Effortlessly configuration, seamlessly restore your last session, and manage sessions with ease. Personalize your workspace with colorful themes and boost productivity by importing commands swiftly.",
     "icon": "assets/logo.png",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "main": "./dist/extension.js",
     "browser": "./dist/web/extension.js",
     "preview": false,
@@ -15,9 +15,7 @@
     "bugs": {
         "url": "https://github.com/zbychpo/terminal-organizer-vscode/issues"
     },
-    "sponsor": {
-        "url": "https://github.com/sponsors/zbychpo"
-    },
+
     "homepage": "https://github.com/zbychpo/terminal-organizer-vscode",
     "galleryBanner": {
         "color": "#11131C",
