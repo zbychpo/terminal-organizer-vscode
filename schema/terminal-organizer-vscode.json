@@ -76,10 +76,7 @@
         "^.*$": {
           "$ref": "#/definitions/sessionItem"
         }
-      },
-      "required": [
-        "default"
-      ]
+      }
     },
     "sessionItem": {
       "type": "array",
