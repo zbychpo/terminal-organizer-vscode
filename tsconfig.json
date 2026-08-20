@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2021",
+    "lib": ["ES2021"],
+    "sourceMap": true,
+    "rootDir": "src",
+    "outDir": "out",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "exclude": ["node_modules", ".vscode-test", "dist", "out", "docs"]
+}

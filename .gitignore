@@ -11,6 +11,7 @@
 /node_modules/
 /package-lock.json
 /yarn.lock
+/out
 
 # Environment files
 /.env
@@ -26,3 +27,15 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+#others
+RECONSTRUCTION_NOTES.md
+/docs
+/build
+
+#IDE
+.vscode
+.vscode-test
+
+# Packaged extension output (produced by `npm run package` / `npm run release`)
+*.vsix

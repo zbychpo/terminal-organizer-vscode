@@ -1,0 +1,525 @@
+{
+    "name": "terminal-organizer",
+    "displayName": "Terminal Organizer",
+    "description": "Elevate your terminal experience! Effortlessly configuration, seamlessly restore your last session, and manage sessions with ease. Personalize your workspace with colorful themes and boost productivity by importing commands swiftly.",
+    "icon": "assets/logo.png",
+    "version": "1.0.0",
+    "main": "./dist/extension.js",
+    "browser": "./dist/web/extension.js",
+    "preview": false,
+    "qna": "marketplace",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/zbychpo/terminal-organizer"
+    },
+    "bugs": {
+        "url": "https://github.com/zbychpo/vs-terminal-organizer/issues"
+    },
+    "sponsor": {
+        "url": "https://github.com/sponsors/zbychpo"
+    },
+    "homepage": "https://github.com/zbychpo/terminal-organizer",
+    "galleryBanner": {
+        "color": "#11131C",
+        "theme": "dark"
+    },
+    "categories": [
+        "Programming Languages",
+        "Debuggers",
+        "Testing",
+        "Other"
+    ],
+    "keywords": [
+        "terminal",
+        "session",
+        "startup",
+        "restore",
+        "save",
+        "remove",
+        "internal",
+        "manager",
+        "switch",
+        "bash",
+        "cmd",
+        "command",
+        "run",
+        "powershell",
+        "pwsh",
+        "script",
+        "theme",
+        "zsh",
+        "shell",
+        "presets",
+        "console",
+        "wsl",
+        "history",
+        "quick",
+        "setup",
+        "execute",
+        "macro",
+        "workspace",
+        "csh",
+        "dash",
+        "ksh",
+        "sh",
+        "tcsh"
+    ],
+    "contributes": {
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "terminalOrganizerActivitybar",
+                    "title": "Terminal Organizer",
+                    "icon": "assets/explorer.svg"
+                }
+            ]
+        },
+        "viewsWelcome": [
+            {
+                "view": "terminalOrganizerActivityView",
+                "contents": "Welcome to Terminal Organizer.\nLet's start by generating the configuration.\n[Generate Configuration](command:terminal-organizer.generate)\nTo learn more about how to manage the terminal session [read our docs!](https://github.com/zbychpo/vs-terminal-organizer/)"
+            }
+        ],
+        "views": {
+            "terminalOrganizerActivitybar": [
+                {
+                    "id": "terminalOrganizerActivityView",
+                    "name": ""
+                }
+            ]
+        },
+        "submenus": [
+            {
+                "id": "import.submenu",
+                "label": "Import Session"
+            }
+        ],
+        "commands": [
+            {
+                "command": "terminal-organizer.generate",
+                "category": "Terminal Organizer",
+                "title": "Generate Configuration"
+            },
+            {
+                "command": "terminal-organizer.clear-all",
+                "category": "Terminal Organizer",
+                "title": "Clear All"
+            },
+            {
+                "command": "terminal-organizer.abort-all",
+                "category": "Terminal Organizer",
+                "title": "Abort All"
+            },
+            {
+                "command": "terminal-organizer.kill-all",
+                "category": "Terminal Organizer",
+                "title": "Kill All"
+            },
+            {
+                "command": "terminal-organizer.active",
+                "category": "Terminal Organizer",
+                "title": "Active Session",
+                "icon": "$(run-all)"
+            },
+            {
+                "command": "terminal-organizer.open",
+                "category": "Terminal Organizer",
+                "title": "Open Configuration",
+                "icon": "$(gear)"
+            },
+            {
+                "command": "terminal-organizer.save",
+                "category": "Terminal Organizer",
+                "title": "Save Session",
+                "enablement": "false"
+            },
+            {
+                "command": "terminal-organizer.remove",
+                "category": "Terminal Organizer",
+                "title": "Remove Session"
+            },
+            {
+                "command": "terminal-organizer.refresh-activity",
+                "title": "Refresh",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "terminal-organizer.navigate-activity",
+                "title": "Edit",
+                "icon": "$(search)"
+            },
+            {
+                "command": "terminal-organizer.collapse-all-activity",
+                "title": "Collapse All",
+                "icon": "$(collapse-all)"
+            },
+            {
+                "command": "terminal-organizer.active-session-activity",
+                "title": "Active Session",
+                "icon": "$(run)"
+            },
+            {
+                "command": "terminal-organizer.send-to-new-terminal-activity",
+                "title": "Send to new Terminal",
+                "icon": "$(send)"
+            },
+            {
+                "command": "terminal-organizer.send-to-current-terminal-activity",
+                "title": "Send to current Terminal"
+            },
+            {
+                "command": "terminal-organizer.copy-command-activity",
+                "title": "Copy"
+            },
+            {
+                "command": "terminal-organizer.help-and-feedback-activity",
+                "title": "Help & Feedback"
+            },
+            {
+                "command": "terminal-organizer.import-from-npm",
+                "title": "From npm (e.g. package.json)"
+            },
+            {
+                "command": "terminal-organizer.import-from-composer",
+                "title": "From composer (e.g. composer.json)"
+            },
+            {
+                "command": "terminal-organizer.import-from-make",
+                "title": "From makefile (e.g. Makefile, makefile)"
+            },
+            {
+                "command": "terminal-organizer.import-from-gradle",
+                "title": "From gradle (e.g. build.gradle, test.gradle)"
+            },
+            {
+                "command": "terminal-organizer.import-from-pipenv",
+                "title": "From pipenv (e.g. Pipfile, pipfile)"
+            },
+            {
+                "command": "terminal-organizer.import-from-ant",
+                "title": "From ant (e.g. build.xml)"
+            },
+            {
+                "command": "terminal-organizer.import-from-grunt",
+                "title": "From grunt (e.g. GRUNTFILE.JS)"
+            },
+            {
+                "command": "terminal-organizer.import-from-gulp",
+                "title": "From gulp (e.g. gulpfile.mjs, gulpfile.js, GULPFILE.js)"
+            },
+            {
+                "command": "terminal-organizer.run-terminal-by-name",
+                "category": "Terminal Organizer",
+                "title": "Run Terminal by Name"
+            },
+            {
+                "command": "terminal-organizer.add-variable-activity",
+                "title": "Add Variable",
+                "icon": "$(add)"
+            },
+            {
+                "command": "terminal-organizer.edit-variable-activity",
+                "title": "Edit Variable",
+                "icon": "$(edit)"
+            },
+            {
+                "command": "terminal-organizer.remove-variable-activity",
+                "title": "Remove Variable",
+                "icon": "$(trash)"
+            }
+        ],
+        "menus": {
+            "import.submenu": [
+                {
+                    "command": "terminal-organizer.import-from-npm",
+                    "group": "source@1"
+                },
+                {
+                    "command": "terminal-organizer.import-from-composer",
+                    "group": "source@2"
+                },
+                {
+                    "command": "terminal-organizer.import-from-make",
+                    "group": "source@3"
+                },
+                {
+                    "command": "terminal-organizer.import-from-gradle",
+                    "group": "source@4"
+                },
+                {
+                    "command": "terminal-organizer.import-from-pipenv",
+                    "group": "source@5"
+                },
+                {
+                    "command": "terminal-organizer.import-from-ant",
+                    "group": "source@6"
+                },
+                {
+                    "command": "terminal-organizer.import-from-grunt",
+                    "group": "source@7"
+                },
+                {
+                    "command": "terminal-organizer.import-from-gulp",
+                    "group": "source@8"
+                }
+            ],
+            "editor/context": [
+                {
+                    "submenu": "import.submenu",
+                    "group": "import"
+                }
+            ],
+            "view/title": [
+                {
+                    "command": "terminal-organizer.active",
+                    "when": "view == terminal && config.terminal-organizer.quickRun == true",
+                    "group": "navigation"
+                },
+                {
+                    "command": "terminal-organizer.active",
+                    "when": "view == terminalOrganizerActivityView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "terminal-organizer.open",
+                    "when": "view == terminalOrganizerActivityView",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "terminal-organizer.collapse-all-activity",
+                    "when": "view == terminalOrganizerActivityView",
+                    "group": "navigation@3"
+                },
+                {
+                    "command": "terminal-organizer.refresh-activity",
+                    "when": "view == terminalOrganizerActivityView",
+                    "group": "activity@1"
+                },
+                {
+                    "command": "terminal-organizer.clear-all",
+                    "when": "view == terminalOrganizerActivityView",
+                    "group": "activity@2"
+                },
+                {
+                    "command": "terminal-organizer.abort-all",
+                    "when": "view == terminalOrganizerActivityView",
+                    "group": "activity@3"
+                },
+                {
+                    "command": "terminal-organizer.kill-all",
+                    "when": "view == terminalOrganizerActivityView",
+                    "group": "activity@4"
+                },
+                {
+                    "submenu": "import.submenu",
+                    "when": "view == terminalOrganizerActivityView",
+                    "group": "tk1@1"
+                },
+                {
+                    "command": "terminal-organizer.save",
+                    "when": "view == terminalOrganizerActivityView",
+                    "group": "tk1@2"
+                },
+                {
+                    "command": "terminal-organizer.remove",
+                    "when": "view == terminalOrganizerActivityView",
+                    "group": "tk1@3"
+                },
+                {
+                    "command": "terminal-organizer.help-and-feedback-activity",
+                    "when": "view == terminalOrganizerActivityView",
+                    "group": "tk2@1"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "terminal-organizer.active-session-activity",
+                    "when": "viewItem == session-context",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "terminal-organizer.send-to-new-terminal-activity",
+                    "when": "viewItem == terminal-array-context || viewItem == terminal-context",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "terminal-organizer.send-to-new-terminal-activity",
+                    "when": "viewItem == terminal-context",
+                    "group": "terminal@1"
+                },
+                {
+                    "command": "terminal-organizer.send-to-current-terminal-activity",
+                    "when": "viewItem == terminal-context",
+                    "group": "terminal@2"
+                },
+                {
+                    "command": "terminal-organizer.copy-command-activity",
+                    "when": "viewItem == terminal-context",
+                    "group": "terminal@3"
+                },
+                {
+                    "command": "terminal-organizer.navigate-activity",
+                    "when": "viewItem == terminal-context",
+                    "group": "terminal@4"
+                },
+                {
+                    "command": "terminal-organizer.add-variable-activity",
+                    "when": "viewItem == variables-group-context",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "terminal-organizer.edit-variable-activity",
+                    "when": "viewItem == variable-context",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "terminal-organizer.remove-variable-activity",
+                    "when": "viewItem == variable-context",
+                    "group": "inline@2"
+                }
+            ],
+            "explorer/context": [
+                {
+                    "when": "explorerResourceIsFolder",
+                    "command": "terminal-organizer.active"
+                }
+            ]
+        },
+        "jsonValidation": [
+            {
+                "fileMatch": "/.vscode/sessions.json",
+                "url": "./schema/terminal-organizer.json"
+            }
+        ],
+        "configuration": {
+            "title": "Terminal Organizer",
+            "properties": {
+                "terminal-organizer.activateOnStartup": {
+                    "type": "boolean",
+                    "default": null,
+                    "description": "Activated the session when Visual Studio Code starts up."
+                },
+                "terminal-organizer.active": {
+                    "type": "string",
+                    "default": null,
+                    "description": "Used to determine which session to use."
+                },
+                "terminal-organizer.keepExistingTerminals": {
+                    "type": "boolean",
+                    "default": null,
+                    "description": "Keep existing terminals open when a session is executed."
+                },
+                "terminal-organizer.noClear": {
+                    "type": "boolean",
+                    "default": null,
+                    "description": "A Boolean variable indicating whether to execute the clear command during initialization. If the value is true, the clear command will not be executed upon initialization. If the value is false, the clear command will be executed."
+                },
+                "terminal-organizer.theme": {
+                    "type": "string",
+                    "default": null,
+                    "enum": [
+                        "default",
+                        "inkwell",
+                        "chaos",
+                        "tribe",
+                        "iconic",
+                        "neon",
+                        "solarized",
+                        "dice"
+                    ],
+                    "description": "The theme can either automatically select colors/icons or manually."
+                },
+                "terminal-organizer.killProcess": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Kill the active process when the terminal is closed.",
+                    "tags": [
+                        "preview"
+                    ]
+                },
+                "terminal-organizer.wslSupport": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When enable, will convert wsl path to windows path when connect to WSL.",
+                    "tags": [
+                        "experimental"
+                    ]
+                },
+                "terminal-organizer.quickRun": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Add a button to quick active session from the terminal tab.",
+                    "tags": [
+                        "preview"
+                    ]
+                },
+                "terminal-organizer.hideCommandsInExplorerDescriptions": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Hide the terminal commands in the explorer tree item descriptions."
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run vscode-desktop:publish && npm run vscode-web:publish",
+        "vscode-desktop:publish": "npm run build -- --minify",
+        "vscode-web:publish": "npm run build:webext -- --production",
+        "lint": "eslint src --ext ts",
+        "cs": "changeset",
+        "compile-tests": "tsc -p ./tsconfig.test.json",
+        "pretest": "npm run compile-tests && npm run build",
+        "test": "node ./out/__test__/runTest.js",
+        "clean": "rm -rf dist out node_modules web/build web/node_modules *.vsix",
+        "build": "node esbuild.js",
+        "build:webext": "node esbuild.js --web",
+        "watch": "tsc -watch -p ./",
+        "watch:webext": "node esbuild.js --web --watch",
+        "package": "vsce package",
+        "release": "vsce publish"
+    },
+    "engines": {
+        "vscode": "^1.64.0"
+    },
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "devDependencies": {
+        "@changesets/cli": "^2.26.1",
+        "@types/mocha": "^10.0.1",
+        "@types/node": "^20.2.5",
+        "@types/vscode": "^1.64.0",
+        "@types/xml2js": "^0.4.14",
+        "@typescript-eslint/eslint-plugin": "^5.59.8",
+        "@typescript-eslint/parser": "^5.59.8",
+        "@vscode/test-electron": "^2.3.2",
+        "@vscode/vsce": "^3.9.2",
+        "assert": "^2.0.0",
+        "buffer": "^6.0.3",
+        "constants-browserify": "^1.0.0",
+        "crypto-browserify": "^3.12.0",
+        "esbuild": "^0.17.19",
+        "eslint": "^8.41.0",
+        "events": "^3.3.0",
+        "mocha": "^10.2.0",
+        "os-browserify": "^0.3.0",
+        "path-browserify": "^1.0.1",
+        "process": "^0.11.10",
+        "stream-browserify": "^3.0.0",
+        "string_decoder": "^1.1.1",
+        "timers-browserify": "^2.0.12",
+        "typescript": "^5.0.4"
+    },
+    "dependencies": {
+        "@sgarciac/bombadil": "^2.3.0",
+        "@vscode-utility/fs-browserify": "^1.0.8",
+        "@vscode-utility/terminal-browserify": "^1.0.5",
+        "glob": "^13.0.6",
+        "xml2js": "^0.6.2"
+    },
+    "author": {
+        "name": "Zbigniew Powrozźnik"
+    },
+    "publisher": "zbigniewpowroznik",
+    "license": "MIT"
+}
