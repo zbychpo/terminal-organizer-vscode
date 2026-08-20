@@ -2,14 +2,20 @@
   <img src="assets/logo.png" width="120" height="120" />
 </p>
 
-[![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/zbigniewpowroznik.terminal-organizer-vscode)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode)
-[![Open VSX Installs](https://img.shields.io/open-vsx/dt/zbigniewpowroznik/terminal-organizer-vscode?color=%2396C41F&label=open-vsx)](https://open-vsx.org/extension/zbigniewpowroznik/terminal-organizer-vscode)
-[![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/zbigniewpowroznik.terminal-organizer-vscode?label=vs-marketplace)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode)
-[![Visual Studio Marketplace Downloads](https://img.shields.io/visual-studio-marketplace/d/zbigniewpowroznik.terminal-organizer-vscode)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode)
-[![Visual Studio Marketplace Rating (Stars)](https://img.shields.io/visual-studio-marketplace/stars/zbigniewpowroznik.terminal-organizer-vscode)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode)
-[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/zbychpo/vs-terminal-organizer-vscode/blob/HEAD/LICENSE)
 
 # Terminal Organizer
+
+<!-- [![Visual Studio Marketplace Version](https://vsmarketplacebadges.dev/version/zbigniewpowroznik.terminal-organizer-vscode.svg)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode)
+[![Visual Studio Marketplace Installs](https://vsmarketplacebadges.dev/installs/zbigniewpowroznik.terminal-organizer-vscode.svg)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode)
+[![Visual Studio Marketplace Rating](https://vsmarketplacebadges.dev/rating/zbigniewpowroznik.terminal-organizer-vscode.svg)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode) -->
+
+[![License](https://img.shields.io/github/license/zbychpo/terminal-organizer-vscode)](https://github.com/zbychpo/terminal-organizer-vscode/blob/main/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/zbychpo/terminal-organizer-vscode)](https://github.com/zbychpo/terminal-organizer-vscode/stargazers)
+
+
+
+Terminal Organizer helps you define, launch, and manage repeatable VS Code terminal sessions. Create named sessions for your projects, restore them automatically when VS Code starts, import commands from common project files, and keep terminals recognizable with colors, icons, and themes.
+
 
 > **Terminal Organizer** is a fork/clone of [**Terminal Keeper**](https://marketplace.visualstudio.com/items?itemName=nguyenngoclong.terminal-keeper), originally created by **Nguyen Ngoc Long**.
 
@@ -20,7 +26,6 @@
 
 Terminal Organizer helps you define, launch, and manage repeatable VS Code terminal sessions. Create named sessions for your projects, restore them automatically when VS Code starts, import commands from common project files, and keep terminals recognizable with colors, icons, and themes.
 
-I
 
 [![Github](https://img.shields.io/badge/Github-F15689?style=for-the-badge&logo=github&logoColor=white)](https://github.com/sponsors/zbychpo)
 
@@ -389,8 +394,8 @@ Please open a Terminal Organizer issue only if the terminal launches normally wi
 ## Feedback
 
 If you discover a bug, or have a suggestion for a feature request, please
-submit an [issue](https://github.com/zbychpo/vs-terminal-organizer-vscode/issues).
+submit an [issue](https://github.com/zbychpo/terminal-organizer-vscode/issues).
 
 ## License
 
-This extension is licensed under the [MIT License](https://github.com/zbychpo/vs-terminal-organizer-vscode/blob/HEAD/LICENSE)
+This extension is licensed under the [MIT License](https://github.com/zbychpo/terminal-organizer-vscode/blob/HEAD/LICENSE)
