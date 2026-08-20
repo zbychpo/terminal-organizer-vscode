@@ -6,8 +6,8 @@ import * as vscode from 'vscode';
 import { substituteVariable, substituteVariablesDeep } from '../../utils/variable-substitution';
 import { resolveVscodeVariable, resolveVscodeVariablesDeep } from '../../utils/vscode-variable-resolver';
 
-const EXTENSION_ID = 'zbigniewpowroznik.terminal-organizer';
-const LATEST_SCHEMA_URI = 'terminal-organizer-schema:/v11/terminal-organizer.json';
+const EXTENSION_ID = 'zbigniewpowroznik.terminal-organizer-vscode';
+const LATEST_SCHEMA_URI = 'terminal-organizer-vscode-schema:/v11/terminal-organizer-vscode.json';
 
 suite('Terminal Organizer Extension Test Suite', () => {
     vscode.window.showInformationMessage('Start all tests.');
@@ -26,16 +26,16 @@ suite('Terminal Organizer Extension Test Suite', () => {
     test('Commands should be registered', async () => {
         const commands = await vscode.commands.getCommands(true);
         const expected = [
-            'terminal-organizer.generate',
-            'terminal-organizer.open',
-            'terminal-organizer.active',
-            'terminal-organizer.save',
-            'terminal-organizer.remove',
-            'terminal-organizer.migrate',
-            'terminal-organizer.clear-all',
-            'terminal-organizer.abort-all',
-            'terminal-organizer.kill-all',
-            'terminal-organizer.run-terminal-by-name'
+            'terminal-organizer-vscode.generate',
+            'terminal-organizer-vscode.open',
+            'terminal-organizer-vscode.active',
+            'terminal-organizer-vscode.save',
+            'terminal-organizer-vscode.remove',
+            'terminal-organizer-vscode.migrate',
+            'terminal-organizer-vscode.clear-all',
+            'terminal-organizer-vscode.abort-all',
+            'terminal-organizer-vscode.kill-all',
+            'terminal-organizer-vscode.run-terminal-by-name'
         ];
         expected.forEach((cmd) => {
             assert.ok(commands.includes(cmd), `Missing command: ${cmd}`);
@@ -70,7 +70,7 @@ suite('Terminal Organizer Extension Test Suite', () => {
         assert.ok(
             jsonValidation.some(
                 (v: { fileMatch: string; url: string }) =>
-                    v.fileMatch === '/.vscode/sessions.json' && v.url === './schema/terminal-organizer.json'
+                    v.fileMatch === '/.vscode/sessions.json' && v.url === './schema/terminal-organizer-vscode.json'
             ),
             'jsonValidation entry for .vscode/sessions.json is missing or incorrect'
         );
@@ -101,7 +101,7 @@ suite('Terminal Organizer Extension Test Suite', () => {
             )
         );
 
-        await vscode.commands.executeCommand('terminal-organizer.migrate');
+        await vscode.commands.executeCommand('terminal-organizer-vscode.migrate');
 
         const migrated = JSON.parse(fs.readFileSync(sessionFilePath, 'utf8'));
         assert.strictEqual(migrated.$schema, LATEST_SCHEMA_URI);
@@ -109,9 +109,9 @@ suite('Terminal Organizer Extension Test Suite', () => {
 
     test('Variable commands should be registered', async () => {
         const commands = await vscode.commands.getCommands(true);
-        assert.ok(commands.includes('terminal-organizer.add-variable-activity'));
-        assert.ok(commands.includes('terminal-organizer.edit-variable-activity'));
-        assert.ok(commands.includes('terminal-organizer.remove-variable-activity'));
+        assert.ok(commands.includes('terminal-organizer-vscode.add-variable-activity'));
+        assert.ok(commands.includes('terminal-organizer-vscode.edit-variable-activity'));
+        assert.ok(commands.includes('terminal-organizer-vscode.remove-variable-activity'));
     });
 
     test('substituteVariable replaces ${variable:NAME} with the matching value', () => {

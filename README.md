@@ -2,20 +2,20 @@
   <img src="assets/logo.png" width="120" height="120" />
 </p>
 
-[![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/zbigniewpowroznik.terminal-organizer)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer)
-[![Open VSX Installs](https://img.shields.io/open-vsx/dt/zbigniewpowroznik/terminal-organizer?color=%2396C41F&label=open-vsx)](https://open-vsx.org/extension/zbigniewpowroznik/terminal-organizer)
-[![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/zbigniewpowroznik.terminal-organizer?label=vs-marketplace)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer)
-[![Visual Studio Marketplace Downloads](https://img.shields.io/visual-studio-marketplace/d/zbigniewpowroznik.terminal-organizer)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer)
-[![Visual Studio Marketplace Rating (Stars)](https://img.shields.io/visual-studio-marketplace/stars/zbigniewpowroznik.terminal-organizer)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer)
-[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/zbychpo/vs-terminal-organizer/blob/HEAD/LICENSE)
+[![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/zbigniewpowroznik.terminal-organizer-vscode)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode)
+[![Open VSX Installs](https://img.shields.io/open-vsx/dt/zbigniewpowroznik/terminal-organizer-vscode?color=%2396C41F&label=open-vsx)](https://open-vsx.org/extension/zbigniewpowroznik/terminal-organizer-vscode)
+[![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/zbigniewpowroznik.terminal-organizer-vscode?label=vs-marketplace)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode)
+[![Visual Studio Marketplace Downloads](https://img.shields.io/visual-studio-marketplace/d/zbigniewpowroznik.terminal-organizer-vscode)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode)
+[![Visual Studio Marketplace Rating (Stars)](https://img.shields.io/visual-studio-marketplace/stars/zbigniewpowroznik.terminal-organizer-vscode)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode)
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/zbychpo/vs-terminal-organizer-vscode/blob/HEAD/LICENSE)
 
 # Terminal Organizer
 
 > **Terminal Organizer** is a fork/clone of [**Terminal Keeper**](https://marketplace.visualstudio.com/items?itemName=nguyenngoclong.terminal-keeper), originally created by **Nguyen Ngoc Long**.
 
 <p align="center">
-  <img src="img/terminal-organizer-showcase.gif">
-  <img src="img/terminal-organizer-showcase-reverse.gif">
+  <img src="img/terminal-organizer-vscode-showcase.gif">
+  <img src="img/terminal-organizer-vscode-showcase-reverse.gif">
 </p>
 
 Terminal Organizer helps you define, launch, and manage repeatable VS Code terminal sessions. Create named sessions for your projects, restore them automatically when VS Code starts, import commands from common project files, and keep terminals recognizable with colors, icons, and themes.
@@ -28,8 +28,8 @@ I
 
 Install Terminal Organizer from one of these registries:
 
-- [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer)
-- [Open VSX Registry](https://open-vsx.org/extension/zbigniewpowroznik/terminal-organizer)
+- [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode)
+- [Open VSX Registry](https://open-vsx.org/extension/zbigniewpowroznik/terminal-organizer-vscode)
 
 Or install it from within VS Code:
 
@@ -40,7 +40,7 @@ Or install it from within VS Code:
 Or from the command line:
 
 ```
-code --install-extension zbigniewpowroznik.terminal-organizer
+code --install-extension zbigniewpowroznik.terminal-organizer-vscode
 ```
 
 ## Why use Terminal Organizer?
@@ -107,7 +107,7 @@ A typical workflow looks like this:
 ### Built-in themes
 
 <p align="center">
-  <img src="img/terminal-organizer-theme.png">
+  <img src="img/terminal-organizer-vscode-theme.png">
 </p>
 
 Built-in themes automatically assign consistent colors and icons to terminals based on their names, making large workspaces much easier to navigate at a glance.
@@ -117,13 +117,13 @@ Prefer a different look every time? Switch to the **Dice** theme for randomly ge
 
 Manage all your terminal sessions from a dedicated Activity Bar view. Create, edit, activate, duplicate, import, or remove sessions without leaving the explorer.
 
-![Terminal Organizer Activity Bar](img/terminal-organizer-activity.gif)
+![Terminal Organizer Activity Bar](img/terminal-organizer-vscode-activity.gif)
 
 ### Import sessions from project files ✨
 
 Skip the manual setup by importing commands directly from common project files such as `package.json`, `composer.json`, `Makefile`, `Pipfile`, Gradle, Ant, Grunt, and Gulp.
 
-![Terminal Organizer Import](img/terminal-organizer-import.gif)
+![Terminal Organizer Import](img/terminal-organizer-vscode-import.gif)
 
 ### Generate configuration
 
@@ -345,7 +345,7 @@ Run specific terminals directly via keyboard shortcuts by adding custom keybindi
 ```json
 {
   "key": "ctrl+shift+t",
-  "command": "terminal-organizer.run-terminal-by-name",
+  "command": "terminal-organizer-vscode.run-terminal-by-name",
   "args": { "name": "dev-server", "session": "default" }
 }
 ```
@@ -360,7 +360,7 @@ Run specific terminals directly via keyboard shortcuts by adding custom keybindi
 By default, Terminal Organizer shows the commands for each terminal as a description in the explorer tree view. If you prefer a cleaner look, you can hide these descriptions by setting the following option in your VS Code settings:
 
 ```json
-"terminal-organizer.hideCommandsInExplorerDescriptions": true
+"terminal-organizer-vscode.hideCommandsInExplorerDescriptions": true
 ```
 
 This will remove the command text from the explorer tree items, showing only the terminal names.
@@ -389,8 +389,8 @@ Please open a Terminal Organizer issue only if the terminal launches normally wi
 ## Feedback
 
 If you discover a bug, or have a suggestion for a feature request, please
-submit an [issue](https://github.com/zbychpo/vs-terminal-organizer/issues).
+submit an [issue](https://github.com/zbychpo/vs-terminal-organizer-vscode/issues).
 
 ## License
 
-This extension is licensed under the [MIT License](https://github.com/zbychpo/vs-terminal-organizer/blob/HEAD/LICENSE)
+This extension is licensed under the [MIT License](https://github.com/zbychpo/vs-terminal-organizer-vscode/blob/HEAD/LICENSE)

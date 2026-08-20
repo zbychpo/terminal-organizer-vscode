@@ -5,7 +5,7 @@ var statusItem;
 var showStatusBar = (activeSession) => {
   if (!statusItem) {
     statusItem = vscode.window.createStatusBarItem(
-      "terminal-organizer.status-bar",
+      "terminal-organizer-vscode.status-bar",
       vscode.StatusBarAlignment.Right,
       Number.MAX_VALUE
     );

@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/terminal-organizer",
+  "$ref": "#/definitions/terminal-organizer-vscode",
   "definitions": {
-    "terminal-organizer": {
+    "terminal-organizer-vscode": {
       "type": "object",
       "additionalProperties": false,
       "properties": {

@@ -6,7 +6,7 @@ import { getWorkspaceRootPath } from '../utils/get-workspace';
 import { getTabWidth } from '../utils/utils';
 
 export class Configuration {
-  static wsConfigurationSpace = "terminal-organizer";
+  static wsConfigurationSpace = "terminal-organizer-vscode";
   static vscodeDirPath = "";
   static sessionFilePath = "";
   static userConfigKeys = [];
@@ -62,7 +62,7 @@ export class Configuration {
       onConfigChange();
     });
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("terminal-organizer")) {
+      if (e.affectsConfiguration("terminal-organizer-vscode")) {
         onConfigChange();
       }
     });
