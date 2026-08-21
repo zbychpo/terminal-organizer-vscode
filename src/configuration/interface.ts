@@ -7,6 +7,7 @@ export interface SessionConfiguration {
   activateOnStartup?: boolean;
   keepExistingTerminals?: boolean;
   noClear?: boolean;
+  openNodeOnStart?: string[];
   variable?: Record<string, string>;
   sessions?: Record<string, any[]>;
   [key: string]: any;

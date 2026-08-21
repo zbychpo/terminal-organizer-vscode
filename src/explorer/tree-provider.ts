@@ -54,6 +54,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
         activateOnStartup = false,
         keepExistingTerminals = false,
         noClear = false,
+        openNodeOnStart = [],
         theme = "default",
         sessions = [],
         variable = {}
@@ -70,7 +71,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
         this.renderGroupItem({
           label: "Global Configs",
           icon: { id: "wrench" },
-          collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
+          collapsibleState: openNodeOnStart.includes("Global Configs") ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
           children: [
             this.renderConfigItem({
               label: "active",
@@ -101,6 +102,12 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
               value: theme,
               defaultValue: "default",
               description: "The theme can either automatically select colors/icons or manually."
+            }),
+            this.renderConfigItem({
+              label: "openNodeOnStart",
+              value: openNodeOnStart,
+              defaultValue: [],
+              description: "List of node names (e.g. \"Sessions\", \"Variables\", a session name, or a split-terminal group name) that will be expanded by default in this explorer view."
             }),
             this.renderConfigItem({
               label: "killProcess",
@@ -140,6 +147,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
             return this.renderSessionItem({
               label: sessionName,
               value: session,
+              openNodeOnStart,
               children: session.map((terminalOrTerminalArray, index) => {
                 if (Array.isArray(terminalOrTerminalArray)) {
                   const terminalGroupName = terminalOrTerminalArray?.[0].name;
@@ -148,6 +156,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
                     sessionId: sessionName,
                     terminalArrayIndex: index,
                     variable: resolvedVariable,
+                    openNodeOnStart,
                     children: terminalOrTerminalArray.map(
                       (t) => this.renderTerminalItem({
                         terminal: t,
@@ -175,7 +184,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
         this.renderGroupItem({
           label: "Variables",
           icon: { id: "symbol-variable" },
-          collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
+          collapsibleState: openNodeOnStart.includes("Variables") ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
           contextValue: "variables-group-context",
           tooltip: Object.keys(variable).length > 0
             ? new vscode.MarkdownString(`### **Variables**${os.EOL}${Object.entries(variable).map(([name, value]) => `- **${name}**: \`${value}\``).join(os.EOL)}`)
@@ -222,7 +231,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       return item;
     };
     this.renderSessionItem = (params) => {
-      const { label, value, children: children2 } = params;
+      const { label, value, children: children2, openNodeOnStart = [] } = params;
       const hideCommandsInExplorerDescriptions = Configuration.getExperimentalConfig("hideCommandsInExplorerDescriptions") ?? false;
       const terminalNames = value.map((s) => Array.isArray(s) ? `[${s.map((v) => v.name).join(", ")}]` : s.name);
       const item = new TKTreeItem(label, children2);
@@ -233,11 +242,11 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       item.contextValue = "session-context";
       item.iconPath = new vscode.ThemeIcon("versions");
       item.sessionId = label;
-      item.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+      item.collapsibleState = openNodeOnStart.includes(label) ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed;
       return item;
     };
     this.renderTerminalArrayItem = (params) => {
-      const { terminals, children: children2, sessionId, terminalArrayIndex, variable } = params;
+      const { terminals, children: children2, sessionId, terminalArrayIndex, variable, openNodeOnStart = [] } = params;
       const label = terminals.map((t) => t.name).join(", ");
       const item = new TKTreeItem(`[${label}]`, children2);
       item.description = "";
@@ -259,7 +268,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       item.iconPath = new vscode.ThemeIcon("array");
       item.sessionId = sessionId;
       item.terminalArrayIndex = terminalArrayIndex;
-      item.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+      item.collapsibleState = terminals.some((t) => openNodeOnStart.includes(t.name)) ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed;
       return item;
     };
     this.renderTerminalItem = (params) => {

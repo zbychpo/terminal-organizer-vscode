@@ -190,6 +190,10 @@ Terminal Organizer stores sessions in a configuration object. Each session conta
     // Skip running the clear command during initialization.
     noClear: boolean,
 
+    // List of node names (e.g. "Sessions", "Variables", a session name, or a split-terminal group name)
+    // that will be expanded by default in the Activity Bar explorer view.
+    openNodeOnStart: Array<string>,
+
     // Theme used to assign terminal colors and icons.
     theme: string,
 

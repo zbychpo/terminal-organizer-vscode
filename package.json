@@ -3,7 +3,7 @@
     "displayName": "Terminal Organizer VSCode",
     "description": "Elevate your terminal experience! Effortlessly configuration, seamlessly restore your last session, and manage sessions with ease. Personalize your workspace with colorful themes and boost productivity by importing commands swiftly.",
     "icon": "assets/logo.png",
-    "version": "1.0.3",
+    "version": "1.0.5",
     "main": "./dist/extension.js",
     "browser": "./dist/web/extension.js",
     "preview": false,
@@ -29,6 +29,7 @@
     ],
     "keywords": [
         "terminal",
+        "keeper",
         "session",
         "startup",
         "restore",
@@ -411,6 +412,14 @@
                     "type": "boolean",
                     "default": null,
                     "description": "A Boolean variable indicating whether to execute the clear command during initialization. If the value is true, the clear command will not be executed upon initialization. If the value is false, the clear command will be executed."
+                },
+                "terminal-organizer-vscode.openNodeOnStart": {
+                    "type": "array",
+                    "default": null,
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of node names (e.g. \"Sessions\", \"Variables\", a session name, or a split-terminal group name) that will be expanded by default in the Activity Bar explorer view."
                 },
                 "terminal-organizer-vscode.theme": {
                     "type": "string",
