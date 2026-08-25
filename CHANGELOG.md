@@ -1,3 +1,7 @@
+## 1.0.6
+
+Added **Environments**: named sets of environment variables (`environments` in `sessions.json`, managed from the Activity Bar's new **Environments** section). The one marked active (`activeEnvironment`) is automatically merged into every terminal's `env` right before a session is activated — keys a terminal already defines in its own `env` win over the active environment's value, and any keys the terminal doesn't define are filled in from the environment. The Sessions tree's per-terminal preview now shows the resulting merged `env` that will actually be passed to the terminal.
+
 ## 1.0.4
 
 Added `openNodeOnStart`, a config option (and matching `terminal-organizer-vscode.openNodeOnStart` workspace setting) that lists node names — "Sessions", "Variables", a session name, or a split-terminal group name — to expand by default in the Activity Bar explorer view.

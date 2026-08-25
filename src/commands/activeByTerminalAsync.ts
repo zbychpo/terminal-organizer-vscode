@@ -6,6 +6,7 @@ import { findTerminal } from '../utils/find-terminal-in-config';
 import { showErrorMessageWithDetail } from '../utils/utils';
 import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
+import { applyEnvironmentToTerminals } from '../utils/environment-merge';
 
 export var activeByTerminalAsync = async (sessionId, terminalArrayIndex, terminalItemName) => {
   try {
@@ -16,9 +17,10 @@ export var activeByTerminalAsync = async (sessionId, terminalArrayIndex, termina
     }
     const { createTerminal, getCwdPath } = terminalBrowserify.TerminalApi.instance();
     const config = await Configuration.load();
-    const { theme = "default", noClear = false, variable } = config;
+    const { theme = "default", noClear = false, variable, environments = {}, activeEnvironment = "" } = config;
+    const activeEnvironmentVariables = environments[activeEnvironment] || {};
     const terminal = substituteVariablesDeep(
-      resolveVscodeVariablesDeep(foundTerminal),
+      resolveVscodeVariablesDeep(applyEnvironmentToTerminals(foundTerminal, activeEnvironmentVariables)),
       resolveVscodeVariablesDeep(variable)
     );
     const themeService = new terminalBrowserify.ThemeService(theme);

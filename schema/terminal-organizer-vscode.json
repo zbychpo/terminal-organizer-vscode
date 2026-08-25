@@ -46,7 +46,7 @@
         "openNodeOnStart": {
           "type": "array",
           "default": [],
-          "description": "List of node names (e.g. 'Sessions', 'Variables', a session name, or a split-terminal group name) that will be expanded by default in the Activity Bar explorer view.",
+          "description": "List of node names (e.g. 'Sessions', 'Variables', 'Environments', a session name, an environment name, or a split-terminal group name) that will be expanded by default in the Activity Bar explorer view.",
           "items": {
             "type": "string",
             "description": "The name of the node to expand."
@@ -57,6 +57,14 @@
         },
         "variable": {
           "$ref": "#/definitions/variable"
+        },
+        "environments": {
+          "$ref": "#/definitions/environments"
+        },
+        "activeEnvironment": {
+          "type": "string",
+          "default": "",
+          "description": "The name of the environment (from \"environments\") that is automatically merged into every terminal's \"env\" before a session is activated."
         }
       },
       "required": [
@@ -68,6 +76,26 @@
       "type": "object",
       "additionalProperties": false,
       "description": "Named string values that can be referenced from session fields (e.g. \"cwd\", \"commands\", \"env\") using \"${variable:NAME}\".",
+      "patternProperties": {
+        "^.*$": {
+          "type": "string"
+        }
+      }
+    },
+    "environments": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Named sets of environment variables. The one selected by \"activeEnvironment\" is automatically merged into every terminal's \"env\" before a session is activated - keys already defined on a terminal's own \"env\" take precedence over the active environment's values.",
+      "patternProperties": {
+        "^.*$": {
+          "$ref": "#/definitions/environmentItem"
+        }
+      }
+    },
+    "environmentItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A named set of environment variables. Values can reference variables (\"${variable:NAME}\") and existing process environment variables (\"${env:NAME}\").",
       "patternProperties": {
         "^.*$": {
           "type": "string"

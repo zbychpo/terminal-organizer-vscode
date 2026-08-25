@@ -5,12 +5,14 @@ import { Configuration } from '../configuration/configuration';
 import { extCommands } from '../utils/constants';
 import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
+import { applyEnvironmentToTerminals } from '../utils/environment-merge';
 
-var buildResolvedTerminalPreview = (terminal, variable) => {
-  const { commands: commands5, joinOperator, env } = terminal;
+var buildResolvedTerminalPreview = (terminal, variable, environmentVariables) => {
+  const terminalWithEnv = applyEnvironmentToTerminals(terminal, environmentVariables);
+  const { commands: commands5, joinOperator, env } = terminalWithEnv;
   const operator = terminalBrowserify.TerminalApi.instance().getJoinOperator(joinOperator);
   const rawCommands = commands5?.join(operator);
-  const resolved = substituteVariablesDeep(resolveVscodeVariablesDeep(terminal), variable);
+  const resolved = substituteVariablesDeep(resolveVscodeVariablesDeep(terminalWithEnv), variable);
   return { rawCommands, resolvedCommands: resolved.commands?.join(operator), env, resolvedEnv: resolved.env };
 };
 export class TKTreeItem extends vscode.TreeItem {
@@ -20,6 +22,7 @@ export class TKTreeItem extends vscode.TreeItem {
   sessionId?: string;
   terminalArrayIndex?: number;
   variableName?: string;
+  environmentName?: string;
 
   constructor(label, children2?) {
     super(label, children2 === undefined ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed);
@@ -36,6 +39,8 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
   renderTerminalArrayItem: (params: any) => TKTreeItem;
   renderTerminalItem: (params: any) => TKTreeItem;
   renderVariableItem: (params: any) => TKTreeItem;
+  renderEnvironmentItem: (params: any) => TKTreeItem;
+  renderEnvironmentVariableItem: (params: any) => TKTreeItem;
 
   constructor() {
     this._onDidChangeTreeData = new vscode.EventEmitter();
@@ -57,9 +62,12 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
         openNodeOnStart = [],
         theme = "default",
         sessions = [],
-        variable = {}
+        variable = {},
+        environments = {},
+        activeEnvironment = ""
       } = config;
       const resolvedVariable = resolveVscodeVariablesDeep(variable);
+      const resolvedActiveEnvironmentVariables = resolveVscodeVariablesDeep(environments[activeEnvironment] || {});
       const killProcess = Configuration.getExperimentalConfig("killProcess");
       const isWSLSupport = Configuration.getExperimentalConfig("wslSupport");
       const isQuickRun = Configuration.getExperimentalConfig("quickRun");
@@ -107,7 +115,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
               label: "openNodeOnStart",
               value: openNodeOnStart,
               defaultValue: [],
-              description: "List of node names (e.g. \"Sessions\", \"Variables\", a session name, or a split-terminal group name) that will be expanded by default in this explorer view."
+              description: "List of node names (e.g. \"Sessions\", \"Variables\", \"Environments\", a session name, an environment name, or a split-terminal group name) that will be expanded by default in this explorer view."
             }),
             this.renderConfigItem({
               label: "killProcess",
@@ -156,6 +164,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
                     sessionId: sessionName,
                     terminalArrayIndex: index,
                     variable: resolvedVariable,
+                    environmentVariables: resolvedActiveEnvironmentVariables,
                     openNodeOnStart,
                     children: terminalOrTerminalArray.map(
                       (t) => this.renderTerminalItem({
@@ -164,7 +173,8 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
                         sessionId: sessionName,
                         terminalArrayIndex: index,
                         terminalGroupName,
-                        variable: resolvedVariable
+                        variable: resolvedVariable,
+                        environmentVariables: resolvedActiveEnvironmentVariables
                       })
                     )
                   });
@@ -175,7 +185,8 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
                   sessionId: sessionName,
                   terminalArrayIndex: index,
                   terminalGroupName: terminalOrTerminalArray.name,
-                  variable: resolvedVariable
+                  variable: resolvedVariable,
+                  environmentVariables: resolvedActiveEnvironmentVariables
                 });
               })
             });
@@ -191,6 +202,18 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
             : new vscode.MarkdownString(`### **Variables**${os.EOL}No variables defined yet.`),
           children: Object.entries(variable).map(([name, value]) =>
             this.renderVariableItem({ name, value })
+          )
+        }),
+        this.renderGroupItem({
+          label: "Environments variables",
+          icon: { id: "server-environment" },
+          collapsibleState: openNodeOnStart.includes("Environments") ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
+          contextValue: "environments-group-context",
+          tooltip: Object.keys(environments).length > 0
+            ? new vscode.MarkdownString(`### **Environments**${os.EOL}${Object.keys(environments).map((name) => `- ${name}${name === activeEnvironment ? " (active)" : ""}`).join(os.EOL)}`)
+            : new vscode.MarkdownString(`### **Environments**${os.EOL}No environments defined yet.`),
+          children: Object.entries(environments).map(([name, value]) =>
+            this.renderEnvironmentItem({ name, value, isActive: name === activeEnvironment, openNodeOnStart })
           )
         })
       ];
@@ -246,14 +269,14 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       return item;
     };
     this.renderTerminalArrayItem = (params) => {
-      const { terminals, children: children2, sessionId, terminalArrayIndex, variable, openNodeOnStart = [] } = params;
+      const { terminals, children: children2, sessionId, terminalArrayIndex, variable, environmentVariables, openNodeOnStart = [] } = params;
       const label = terminals.map((t) => t.name).join(", ");
       const item = new TKTreeItem(`[${label}]`, children2);
       item.description = "";
       item.tooltip = new vscode.MarkdownString(`### **[${label}]**${os.EOL}`).appendMarkdown(
         terminals.map((terminal) => {
           const { name, disabled } = terminal;
-          const { rawCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable);
+          const { rawCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables);
           let section = `- ${name}${disabled ? " (disabled)" : ""}${os.EOL}\`\`\`sh${os.EOL}${rawCommands}${os.EOL}\`\`\`${os.EOL}`;
           if (resolvedCommands && resolvedCommands !== rawCommands) {
             section += `  **Resolved command**${os.EOL}\`\`\`sh${os.EOL}${resolvedCommands}${os.EOL}\`\`\`${os.EOL}`;
@@ -272,11 +295,11 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       return item;
     };
     this.renderTerminalItem = (params) => {
-      const { terminal, theme, sessionId, terminalArrayIndex, terminalGroupName, variable } = params;
+      const { terminal, theme, sessionId, terminalArrayIndex, terminalGroupName, variable, environmentVariables } = params;
       const { name: terminalName = "(empty)" } = terminal;
       const icon = theme.getIcon(terminal.icon, terminalGroupName, terminalName);
       const color = theme.getColor(terminal.color, terminalGroupName, terminalName);
-      const { rawCommands: terminalCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable);
+      const { rawCommands: terminalCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables);
       const hideCommandsInExplorerDescriptions = Configuration.getExperimentalConfig("hideCommandsInExplorerDescriptions") ?? false;
       const item = new TKTreeItem(terminalName);
       if (!hideCommandsInExplorerDescriptions) {
@@ -312,6 +335,34 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       item.tooltip = new vscode.MarkdownString(`### **${name}**`).appendCodeblock(`${value}`);
       item.contextValue = "variable-context";
       item.iconPath = new vscode.ThemeIcon("symbol-variable");
+      item.variableName = name;
+      return item;
+    };
+    this.renderEnvironmentItem = (params) => {
+      const { name, value = {}, isActive, openNodeOnStart = [] } = params;
+      const entries = Object.entries(value);
+      const item = new TKTreeItem(
+        name,
+        entries.map(([key, val]) => this.renderEnvironmentVariableItem({ environmentName: name, name: key, value: val }))
+      );
+      item.description = isActive ? "active" : "";
+      item.tooltip = new vscode.MarkdownString(`### **${name}**${isActive ? " (active)" : ""}${os.EOL}`).appendMarkdown(
+        entries.length > 0 ? entries.map(([key, val]) => `- **${key}**: \`${val}\``).join(os.EOL) : "No environment variables defined yet."
+      );
+      item.contextValue = "environment-context";
+      item.iconPath = new vscode.ThemeIcon(isActive ? "pass-filled" : "circle-outline", isActive ? new vscode.ThemeColor("terminal.ansiGreen") : undefined);
+      item.environmentName = name;
+      item.collapsibleState = openNodeOnStart.includes(name) ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed;
+      return item;
+    };
+    this.renderEnvironmentVariableItem = (params) => {
+      const { environmentName, name, value } = params;
+      const item = new TKTreeItem(name);
+      item.description = value;
+      item.tooltip = new vscode.MarkdownString(`### **${name}**`).appendCodeblock(`${value}`);
+      item.contextValue = "environment-variable-context";
+      item.iconPath = new vscode.ThemeIcon("symbol-variable");
+      item.environmentName = environmentName;
       item.variableName = name;
       return item;
     };

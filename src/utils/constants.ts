@@ -27,7 +27,13 @@ export var extCommands = {
   runTerminalByName: "terminal-organizer-vscode.run-terminal-by-name",
   addVariableActivity: "terminal-organizer-vscode.add-variable-activity",
   editVariableActivity: "terminal-organizer-vscode.edit-variable-activity",
-  removeVariableActivity: "terminal-organizer-vscode.remove-variable-activity"
+  removeVariableActivity: "terminal-organizer-vscode.remove-variable-activity",
+  addEnvironmentActivity: "terminal-organizer-vscode.add-environment-activity",
+  removeEnvironmentActivity: "terminal-organizer-vscode.remove-environment-activity",
+  setActiveEnvironmentActivity: "terminal-organizer-vscode.set-active-environment-activity",
+  addEnvironmentVariableActivity: "terminal-organizer-vscode.add-environment-variable-activity",
+  editEnvironmentVariableActivity: "terminal-organizer-vscode.edit-environment-variable-activity",
+  removeEnvironmentVariableActivity: "terminal-organizer-vscode.remove-environment-variable-activity"
 };
 export var ACTIVITY_VIEW_ID = "terminalOrganizerActivityView";
 export var sysCommands = {
@@ -113,6 +119,27 @@ export var constants = {
   editVariableFailed: "Failed to edit the variable.",
   removeVariableFailed: "Failed to remove the variable.",
   removeVariableSuccess: "The variable was successfully removed!",
+  // Environments
+  enterEnvironmentNameTitle: "Please enter the environment name.",
+  enterEnvironmentNamePlaceHolder: "e.g. java8, java11",
+  environmentNameNotEmpty: "Environment name cannot be null or empty.",
+  environmentNameIsDuplicated: "An environment with this name already exists.",
+  addEnvironmentSuccess: "The environment was successfully added!",
+  addEnvironmentFailed: "Failed to add the environment.",
+  removeEnvironmentFailed: "Failed to remove the environment.",
+  removeEnvironmentSuccess: "The environment was successfully removed!",
+  setActiveEnvironmentFailed: "Failed to set the active environment.",
+  enterEnvironmentVariableNameTitle: "Please enter the environment variable name.",
+  enterEnvironmentVariableNamePlaceHolder: "e.g. JAVA_HOME, PATH",
+  environmentVariableNameNotEmpty: "Environment variable name cannot be null or empty.",
+  environmentVariableNameIsDuplicated: "An environment variable with this name already exists in this environment.",
+  pickEnvironmentVariableValueTitle: "Environment variable value",
+  pickEnvironmentVariableValuePlaceHolder: "e.g. ${variable:javaHome}\\bin;${env:PATH}",
+  addEnvironmentVariableSuccess: "The environment variable was successfully added!",
+  addEnvironmentVariableFailed: "Failed to add the environment variable.",
+  editEnvironmentVariableFailed: "Failed to edit the environment variable.",
+  removeEnvironmentVariableFailed: "Failed to remove the environment variable.",
+  removeEnvironmentVariableSuccess: "The environment variable was successfully removed!",
   // The components
   yesButton: "Yes",
   noButton: "No",

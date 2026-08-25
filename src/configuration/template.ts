@@ -8,6 +8,8 @@ export var configurationTemplate = {
   activateOnStartup: true,
   keepExistingTerminals: false,
   variable: {},
+  environments: {},
+  activeEnvironment: "",
   sessions: {
     default: [
       {

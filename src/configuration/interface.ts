@@ -9,6 +9,8 @@ export interface SessionConfiguration {
   noClear?: boolean;
   openNodeOnStart?: string[];
   variable?: Record<string, string>;
+  environments?: Record<string, Record<string, string>>;
+  activeEnvironment?: string;
   sessions?: Record<string, any[]>;
   [key: string]: any;
 }

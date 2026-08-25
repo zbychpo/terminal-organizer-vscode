@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import { constants } from './constants';
 
-export var pickVariableValue = (initialValue) => {
+export var pickVariableValue = (initialValue, options: { title?: string; placeholder?: string } = {}) => {
   return new Promise((resolve) => {
     const input = vscode.window.createInputBox();
-    input.title = constants.pickVariableValueTitle;
-    input.placeholder = constants.pickVariableValuePlaceHolder;
+    input.title = options.title || constants.pickVariableValueTitle;
+    input.placeholder = options.placeholder || constants.pickVariableValuePlaceHolder;
     input.value = initialValue || "";
     input.ignoreFocusOut = true;
     input.buttons = [

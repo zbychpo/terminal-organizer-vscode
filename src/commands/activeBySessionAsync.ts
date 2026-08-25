@@ -6,6 +6,7 @@ import { updateStatusBar } from '../utils/show-status-bar';
 import { showErrorMessageWithDetail, showGenerateConfiguration, killAllTerminal } from '../utils/utils';
 import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
+import { applyEnvironmentToTerminals } from '../utils/environment-merge';
 
 export var activeBySessionAsync = async (activeSession, isSaveActiveSession = false) => {
   try {
@@ -15,7 +16,7 @@ export var activeBySessionAsync = async (activeSession, isSaveActiveSession = fa
       return;
     }
     const config = await Configuration.load();
-    const { keepExistingTerminals = false, sessions, theme = "default", noClear = false, variable } = config;
+    const { keepExistingTerminals = false, sessions, theme = "default", noClear = false, variable, environments = {}, activeEnvironment = "" } = config;
     if (!sessions) {
       vscode.window.showWarningMessage(constants.notExistAnySessions);
       return;
@@ -29,16 +30,20 @@ export var activeBySessionAsync = async (activeSession, isSaveActiveSession = fa
       vscode.window.showWarningMessage(constants.notExistAnySpitTerminal.replace("{session}", activeSession));
       return;
     }
+    const activeEnvironmentVariables = environments[activeEnvironment] || {};
     const activatedSession = substituteVariablesDeep(
       resolveVscodeVariablesDeep(
-        selectedSession.map((sessionItem) => {
-          if (Array.isArray(sessionItem)) {
-            const filtered = sessionItem.filter((i) => !i.disabled);
-            return filtered.length <= 0 ? undefined : filtered;
-          } else {
-            return sessionItem.disabled ? undefined : sessionItem;
-          }
-        }).filter(Boolean)
+        applyEnvironmentToTerminals(
+          selectedSession.map((sessionItem) => {
+            if (Array.isArray(sessionItem)) {
+              const filtered = sessionItem.filter((i) => !i.disabled);
+              return filtered.length <= 0 ? undefined : filtered;
+            } else {
+              return sessionItem.disabled ? undefined : sessionItem;
+            }
+          }).filter(Boolean),
+          activeEnvironmentVariables
+        )
       ),
       resolveVscodeVariablesDeep(variable)
     );

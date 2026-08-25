@@ -190,8 +190,9 @@ Terminal Organizer stores sessions in a configuration object. Each session conta
     // Skip running the clear command during initialization.
     noClear: boolean,
 
-    // List of node names (e.g. "Sessions", "Variables", a session name, or a split-terminal group name)
-    // that will be expanded by default in the Activity Bar explorer view.
+    // List of node names (e.g. "Sessions", "Variables", "Environments", a session name,
+    // an environment name, or a split-terminal group name) that will be expanded by
+    // default in the Activity Bar explorer view.
     openNodeOnStart: Array<string>,
 
     // Theme used to assign terminal colors and icons.
@@ -243,6 +244,17 @@ Terminal Organizer stores sessions in a configuration object. Each session conta
     variable: {
         name: string,
         
+    },
+
+    // The name of the environment (from "environments") merged into every
+    // terminal's env before a session is activated.
+    activeEnvironment: string,
+
+    // Named sets of environment variables. See the "Environments" section below.
+    environments: {
+        name: {
+            NAME: string
+        }
     }
 }
 ```
@@ -346,6 +358,58 @@ Define named string values once in a top-level `variable` object, then reuse the
 Manage variables from the Activity Bar's **Variables** section: the **+** button on the group adds one (with a folder-picker button to fill in a file/folder path instead of typing it), and each variable has inline **edit**/**remove** actions.
 
 Session fields (and `variable` values themselves) also understand a few of VS Code's own [predefined variables](https://code.visualstudio.com/docs/editor/variables-reference), such as `${workspaceFolder}`, `${workspaceFolderBasename}`, `${userHome}`, `${pathSeparator}`/`${/}`, and `${env:NAME}` - see the [full configuration guide](docs/manage/configuration.md) for details.
+
+### Environments ✨
+
+Define named sets of environment variables once in a top-level `environments` object, then mark one of them `activeEnvironment`. The active environment is automatically merged into **every** terminal's `env` right before a session is activated - no need to repeat `JAVA_HOME`/`MAVEN_HOME`/`PATH` on each terminal that needs them:
+
+```jsonc
+{
+    "activeEnvironment": "java17",
+    "environments": {
+        "java17": {
+            "JAVA_HOME": "${variable:javaHome}",
+            "MAVEN_HOME": "${variable:mavenHome}",
+            "PATH": "${variable:javaHome}\\bin;${variable:mavenHome}\\bin;${env:PATH}"
+        },
+        "java8": {
+            "JAVA_HOME": "C:\\Program Files\\Java\\jdk1.8.0",
+            "PATH": "C:\\Program Files\\Java\\jdk1.8.0\\bin;${env:PATH}"
+        }
+    },
+    "variable": {
+        "javaHome": "C:\\Program Files\\Java\\jdk-17",
+        "mavenHome": "C:\\Program Files\\Apache\\maven-3.9"
+    },
+    "sessions": {
+        "default": [
+            {
+                "name": "build",
+                "commands": ["mvn clean install"]
+            }
+        ]
+    }
+}
+```
+
+A terminal can still define its own `env` - only the keys it **doesn't** already define are filled in from the active environment, and any key it does define wins:
+
+```jsonc
+{
+    "name": "build",
+    "commands": ["mvn clean install"],
+    "env": {
+        // Overrides the active environment's JAVA_HOME for this terminal only.
+        "JAVA_HOME": "C:\\Program Files\\Java\\jdk1.8.0",
+        // A terminal-only variable the active environment doesn't define.
+        "ILE_ELEMENTO": "10"
+    }
+}
+```
+
+With the `java17` environment above active, this terminal ends up with `JAVA_HOME=C:\Program Files\Java\jdk1.8.0` (its own value), plus `MAVEN_HOME` and `PATH` filled in from `java17`, plus `ILE_ELEMENTO=10`.
+
+Manage environments from the Activity Bar's **Environments** section: the **+** button on the group adds one, and each environment has inline actions to set it as **active** (✓), **add** a variable to it, or **remove** it entirely; each variable inside an environment has inline **edit**/**remove** actions. The Sessions tree's per-terminal tooltip shows the resulting merged `env` - i.e. exactly what will be passed to the terminal once the active environment and any variables are resolved.
 
 ### Keybinding support
 
