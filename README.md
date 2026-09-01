@@ -5,10 +5,6 @@
 
 # Terminal Organizer
 
-[![Visual Studio Marketplace Version](https://vsmarketplacebadges.dev/version/zbigniewpowroznik.terminal-organizer-vscode.svg)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode)
-[![Visual Studio Marketplace Installs](https://vsmarketplacebadges.dev/installs/zbigniewpowroznik.terminal-organizer-vscode.svg)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode)
-[![Visual Studio Marketplace Rating](https://vsmarketplacebadges.dev/rating/zbigniewpowroznik.terminal-organizer-vscode.svg)](https://marketplace.visualstudio.com/items?itemName=zbigniewpowroznik.terminal-organizer-vscode) 
-
 [![License](https://img.shields.io/github/license/zbychpo/terminal-organizer-vscode)](https://github.com/zbychpo/terminal-organizer-vscode/blob/main/LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/zbychpo/terminal-organizer-vscode)](https://github.com/zbychpo/terminal-organizer-vscode/stargazers)
 
