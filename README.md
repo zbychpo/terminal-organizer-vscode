@@ -6,7 +6,7 @@
 # Terminal Organizer
 
 [![License](https://img.shields.io/github/license/zbychpo/terminal-organizer-vscode)](https://github.com/zbychpo/terminal-organizer-vscode/blob/main/LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/zbychpo/terminal-organizer-vscode)](https://github.com/zbychpo/terminal-organizer-vscode/stargazers)
+
 
 
 
