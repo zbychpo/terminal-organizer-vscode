@@ -7,6 +7,7 @@ import { addVariableAsync } from './commands/addVariableAsync';
 import { addEnvironmentAsync } from './commands/addEnvironmentAsync';
 import { addEnvironmentVariableAsync } from './commands/addEnvironmentVariableAsync';
 import { clearAllAsync } from './commands/clearAllAsync';
+import { editConfigAsync } from './commands/editConfigAsync';
 import { editVariableAsync } from './commands/editVariableAsync';
 import { editEnvironmentVariableAsync } from './commands/editEnvironmentVariableAsync';
 import { generateAsync } from './commands/generateAsync';
@@ -135,6 +136,9 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand(extCommands.importFromGulpActivity, async () => {
       await importAsync("gulp");
+    }),
+    vscode.commands.registerCommand(extCommands.editConfigActivity, async (configTreeItem) => {
+      await editConfigAsync(configTreeItem);
     }),
     vscode.commands.registerCommand(extCommands.addVariableActivity, async () => {
       await addVariableAsync();

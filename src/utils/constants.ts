@@ -25,6 +25,7 @@ export var extCommands = {
   navigateActivity: "terminal-organizer-vscode.navigate-activity",
   helpAndFeedbackActivity: "terminal-organizer-vscode.help-and-feedback-activity",
   runTerminalByName: "terminal-organizer-vscode.run-terminal-by-name",
+  editConfigActivity: "terminal-organizer-vscode.edit-config-activity",
   addVariableActivity: "terminal-organizer-vscode.add-variable-activity",
   editVariableActivity: "terminal-organizer-vscode.edit-variable-activity",
   removeVariableActivity: "terminal-organizer-vscode.remove-variable-activity",
@@ -105,6 +106,14 @@ export var constants = {
   terminalNotFound: 'Terminal "{name}" not found in session "{session}".',
   terminalNotFoundInAny: 'Terminal "{name}" not found in any session.',
   runTerminalByNameFailed: "Failed to run terminal by name.",
+  // Global configs
+  editConfigTitle: 'Edit "{key}"',
+  editConfigBooleanPlaceHolder: "Select a value...",
+  editConfigThemePlaceHolder: "Select a theme...",
+  editConfigActivePlaceHolder: "Select a session...",
+  editConfigArrayPlaceHolder: "Select the node names to expand on start...",
+  editConfigStringPlaceHolder: "Enter a value...",
+  editConfigFailed: "Failed to edit the configuration.",
   // Variables
   enterVariableNameTitle: "Please enter the variable name.",
   enterVariableNamePlaceHolder: "e.g. projectRoot, logsDir",

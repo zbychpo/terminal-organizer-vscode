@@ -23,6 +23,7 @@ export class TKTreeItem extends vscode.TreeItem {
   terminalArrayIndex?: number;
   variableName?: string;
   environmentName?: string;
+  configValue?: any;
 
   constructor(label, children2?) {
     super(label, children2 === undefined ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed);
@@ -239,7 +240,8 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       const item = new TKTreeItem(label, children2);
       item.description = `${value}`;
       item.tooltip = new vscode.MarkdownString(`### **${label}**: \`${value}\``).appendText(description ? `${os.EOL}${description}` : "").appendCodeblock(`Default Value: ${defaultValue}`).appendCodeblock(`Config Source: ${source}`);
-      item.contextValue = "overview-context";
+      item.contextValue = "config-context";
+      item.configValue = value;
       item.iconPath = new vscode.ThemeIcon(id || "circle-filled", color);
       item.source = source;
       item.keywords = source === "settings.json" ? [
