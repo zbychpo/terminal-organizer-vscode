@@ -168,6 +168,8 @@ Open your Terminal Organizer configuration with a single command whenever you ne
 
 ![Quick open configuration](img/open-configuration.gif)
 
+Each setting under the Activity Bar's **Global Configs** group also has an inline **edit** (pencil) button, so you don't have to open `sessions.json`/`settings.json` by hand: it picks the right control for the setting - Yes/No for on/off settings, a theme picker for `theme`, a session picker for `active`, and a multi-select list (Global Configs, Variables, Environments, session names, split-terminal group names, environment names) for `openNodeOnStart`.
+
 ## Configuration
 
 Terminal Organizer stores sessions in a configuration object. Each session contains one or more terminals. Use an object for a normal terminal, or an array of terminal objects when you want split terminals.
@@ -352,6 +354,24 @@ Define named string values once in a top-level `variable` object, then reuse the
 ```
 
 Manage variables from the Activity Bar's **Variables** section: the **+** button on the group adds one (with a folder-picker button to fill in a file/folder path instead of typing it), and each variable has inline **edit**/**remove** actions.
+
+The group also has an **import** (cloud-download) button that reads a `.env`-style file (comments, `export` prefixes, and single/double-quoted values are all handled) and adds every `KEY=value` line as a variable. After importing, you're asked for an environment name (pre-filled from the file name) - if you provide one, an entry is added to `environments` with the same keys pointing back at the imported variables via `${variable:NAME}`, so you get a ready-to-activate environment instead of two copies of the same values:
+
+```jsonc
+// Imported from ".env" containing JAVA_HOME=... and MAVEN_HOME=...
+{
+    "variable": {
+        "JAVA_HOME": "C:\\Program Files\\Java\\jdk-17",
+        "MAVEN_HOME": "C:\\Program Files\\Apache\\maven-3.9"
+    },
+    "environments": {
+        "env": {
+            "JAVA_HOME": "${variable:JAVA_HOME}",
+            "MAVEN_HOME": "${variable:MAVEN_HOME}"
+        }
+    }
+}
+```
 
 Session fields (and `variable` values themselves) also understand a few of VS Code's own [predefined variables](https://code.visualstudio.com/docs/editor/variables-reference), such as `${workspaceFolder}`, `${workspaceFolderBasename}`, `${userHome}`, `${pathSeparator}`/`${/}`, and `${env:NAME}` - see the [full configuration guide](docs/manage/configuration.md) for details.
 

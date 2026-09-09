@@ -1,3 +1,7 @@
+## 1.0.8
+
+Added an **import** button to the Activity Bar's **Variables** group that reads a `.env`-style file (comments, `export` prefixes, and quoted values are handled) and adds every `KEY=value` line as a variable. After importing, you can optionally name an environment to add alongside it - one with the same keys, each pointing back at the imported variable via `${variable:NAME}` instead of duplicating the raw value.
+
 ## 1.0.7
 
 Added GUI editing for **Global Configs** items in the Activity Bar explorer: an inline edit button now opens a QuickPick/InputBox tailored to the setting's type — Yes/No for booleans, a theme picker for `theme`, a session picker for `active`, and a multi-select node picker (Global Configs, Variables, Environments, session names, split-terminal group names, environment names) for `openNodeOnStart` — and saves the value through the same settings.json/sessions.json resolution used elsewhere.

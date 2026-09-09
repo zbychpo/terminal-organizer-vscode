@@ -12,6 +12,7 @@ import { editVariableAsync } from './commands/editVariableAsync';
 import { editEnvironmentVariableAsync } from './commands/editEnvironmentVariableAsync';
 import { generateAsync } from './commands/generateAsync';
 import { importAsync } from './commands/importAsync';
+import { importVariablesAsync } from './commands/importVariablesAsync';
 import { killAllAsync } from './commands/killAllAsync';
 import { migrateAsync } from './commands/migrateAsync';
 import { navigateAsync } from './commands/navigateAsync';
@@ -142,6 +143,9 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand(extCommands.addVariableActivity, async () => {
       await addVariableAsync();
+    }),
+    vscode.commands.registerCommand(extCommands.importVariablesActivity, async () => {
+      await importVariablesAsync();
     }),
     vscode.commands.registerCommand(extCommands.editVariableActivity, async (variableTreeItem) => {
       await editVariableAsync(variableTreeItem);
