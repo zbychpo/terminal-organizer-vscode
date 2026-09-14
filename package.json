@@ -3,7 +3,7 @@
     "displayName": "Terminal Organizer VSCode",
     "description": "Elevate your terminal experience! Effortlessly configuration, seamlessly restore your last session, and manage sessions with ease. Personalize your workspace with colorful themes and boost productivity by importing commands swiftly.",
     "icon": "assets/logo.png",
-    "version": "1.0.",
+    "version": "1.0.10",
     "main": "./dist/extension.js",
     "browser": "./dist/web/extension.js",
     "preview": false,
@@ -158,9 +158,24 @@
                 "icon": "$(run)"
             },
             {
+                "command": "terminal-organizer-vscode.remove-session-activity",
+                "title": "Remove Session",
+                "icon": "$(trash)"
+            },
+            {
                 "command": "terminal-organizer-vscode.send-to-new-terminal-activity",
                 "title": "Send to new Terminal",
                 "icon": "$(send)"
+            },
+            {
+                "command": "terminal-organizer-vscode.remove-terminal-activity",
+                "title": "Remove Terminal",
+                "icon": "$(trash)"
+            },
+            {
+                "command": "terminal-organizer-vscode.remove-terminal-group-activity",
+                "title": "Remove Terminal Group",
+                "icon": "$(trash)"
             },
             {
                 "command": "terminal-organizer-vscode.send-to-current-terminal-activity",
@@ -377,9 +392,24 @@
                     "group": "inline@1"
                 },
                 {
+                    "command": "terminal-organizer-vscode.remove-session-activity",
+                    "when": "viewItem == session-context",
+                    "group": "inline@2"
+                },
+                {
                     "command": "terminal-organizer-vscode.send-to-new-terminal-activity",
                     "when": "viewItem == terminal-array-context || viewItem == terminal-context",
                     "group": "inline@1"
+                },
+                {
+                    "command": "terminal-organizer-vscode.remove-terminal-activity",
+                    "when": "viewItem == terminal-context",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "terminal-organizer-vscode.remove-terminal-group-activity",
+                    "when": "viewItem == terminal-array-context",
+                    "group": "inline@2"
                 },
                 {
                     "command": "terminal-organizer-vscode.send-to-new-terminal-activity",

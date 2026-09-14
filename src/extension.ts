@@ -18,6 +18,9 @@ import { migrateAsync } from './commands/migrateAsync';
 import { navigateAsync } from './commands/navigateAsync';
 import { openAsync } from './commands/openAsync';
 import { removeAsync } from './commands/removeAsync';
+import { removeSessionActivityAsync } from './commands/removeSessionActivityAsync';
+import { removeTerminalActivityAsync } from './commands/removeTerminalActivityAsync';
+import { removeTerminalGroupActivityAsync } from './commands/removeTerminalGroupActivityAsync';
 import { removeVariableAsync } from './commands/removeVariableAsync';
 import { removeEnvironmentAsync } from './commands/removeEnvironmentAsync';
 import { removeEnvironmentVariableAsync } from './commands/removeEnvironmentVariableAsync';
@@ -83,6 +86,15 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(extCommands.activeSessionActivity, async (sessionTreeItem) => {
       const { sessionId } = sessionTreeItem;
       await activeBySessionAsync(sessionId, true);
+    }),
+    vscode.commands.registerCommand(extCommands.removeSessionActivity, async (sessionTreeItem) => {
+      await removeSessionActivityAsync(sessionTreeItem);
+    }),
+    vscode.commands.registerCommand(extCommands.removeTerminalActivity, async (terminalTreeItem) => {
+      await removeTerminalActivityAsync(terminalTreeItem);
+    }),
+    vscode.commands.registerCommand(extCommands.removeTerminalGroupActivity, async (terminalArrayTreeItem) => {
+      await removeTerminalGroupActivityAsync(terminalArrayTreeItem);
     }),
     vscode.commands.registerCommand(extCommands.collapseAllActivity, async () => {
       await vscode.commands.executeCommand(sysCommands.activityCollapseAll);

@@ -1,3 +1,11 @@
+## 1.0.10
+
+Added inline **Remove Terminal** and **Remove Terminal Group** buttons in the Activity Bar's **Sessions** tree: a single terminal node now has its own trash button that removes just that terminal (including one inside a split-terminal group, without disturbing the rest of the group), and a split-terminal group node has a trash button that removes the whole group in one click.
+
+## 1.0.9
+
+Added an inline **Remove Session** button (next to the existing Active Session button) to each session in the Activity Bar's **Sessions** group, so a whole session can be deleted with one click instead of going through the command palette's session picker. The default session is still protected from removal.
+
 ## 1.0.8
 
 Added an **import** button to the Activity Bar's **Variables** group that reads a `.env`-style file (comments, `export` prefixes, and quoted values are handled) and adds every `KEY=value` line as a variable. After importing, you can optionally name an environment to add alongside it - one with the same keys, each pointing back at the imported variable via `${variable:NAME}` instead of duplicating the raw value.
