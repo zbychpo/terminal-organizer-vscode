@@ -6,9 +6,10 @@ import { extCommands } from '../utils/constants';
 import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
 import { applyEnvironmentToTerminals } from '../utils/environment-merge';
+import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
 
-var buildResolvedTerminalPreview = (terminal, variable, environmentVariables) => {
-  const terminalWithEnv = applyEnvironmentToTerminals(terminal, environmentVariables);
+var buildResolvedTerminalPreview = (terminal, variable, environmentVariables, globalJoinOperator) => {
+  const terminalWithEnv = applyEnvironmentToTerminals(applyGlobalJoinOperator(terminal, globalJoinOperator), environmentVariables);
   const { commands: commands5, joinOperator, env } = terminalWithEnv;
   const operator = terminalBrowserify.TerminalApi.instance().getJoinOperator(joinOperator);
   const rawCommands = commands5?.join(operator);
@@ -60,6 +61,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
         activateOnStartup = false,
         keepExistingTerminals = false,
         noClear = false,
+        joinOperator = "",
         openNodeOnStart = [],
         theme = "default",
         sessions = [],
@@ -105,6 +107,12 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
               value: noClear,
               defaultValue: false,
               description: `A Boolean variable indicating whether to execute the clear command during initialization.${os.EOL}If the value is true, the clear command will not be executed upon initialization.${os.EOL}If the value is false, the clear command will be executed.`
+            }),
+            this.renderConfigItem({
+              label: "joinOperator",
+              value: joinOperator,
+              defaultValue: "",
+              description: `The default operator used to join a terminal's multiple commands (e.g. ";", "&&", "||") when the terminal doesn't specify its own "joinOperator".${os.EOL}A terminal's own "joinOperator" always overrides this global value. If neither is set, it defaults to "&" on Windows and ";" elsewhere.`
             }),
             this.renderConfigItem({
               label: "theme",
@@ -166,6 +174,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
                     terminalArrayIndex: index,
                     variable: resolvedVariable,
                     environmentVariables: resolvedActiveEnvironmentVariables,
+                    joinOperator,
                     openNodeOnStart,
                     children: terminalOrTerminalArray.map(
                       (t) => this.renderTerminalItem({
@@ -175,7 +184,8 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
                         terminalArrayIndex: index,
                         terminalGroupName,
                         variable: resolvedVariable,
-                        environmentVariables: resolvedActiveEnvironmentVariables
+                        environmentVariables: resolvedActiveEnvironmentVariables,
+                        joinOperator
                       })
                     )
                   });
@@ -187,7 +197,8 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
                   terminalArrayIndex: index,
                   terminalGroupName: terminalOrTerminalArray.name,
                   variable: resolvedVariable,
-                  environmentVariables: resolvedActiveEnvironmentVariables
+                  environmentVariables: resolvedActiveEnvironmentVariables,
+                  joinOperator
                 });
               })
             });
@@ -271,14 +282,14 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       return item;
     };
     this.renderTerminalArrayItem = (params) => {
-      const { terminals, children: children2, sessionId, terminalArrayIndex, variable, environmentVariables, openNodeOnStart = [] } = params;
+      const { terminals, children: children2, sessionId, terminalArrayIndex, variable, environmentVariables, joinOperator, openNodeOnStart = [] } = params;
       const label = terminals.map((t) => t.name).join(", ");
       const item = new TKTreeItem(`[${label}]`, children2);
       item.description = "";
       item.tooltip = new vscode.MarkdownString(`### **[${label}]**${os.EOL}`).appendMarkdown(
         terminals.map((terminal) => {
           const { name, disabled } = terminal;
-          const { rawCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables);
+          const { rawCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables, joinOperator);
           let section = `- ${name}${disabled ? " (disabled)" : ""}${os.EOL}\`\`\`sh${os.EOL}${rawCommands}${os.EOL}\`\`\`${os.EOL}`;
           if (resolvedCommands && resolvedCommands !== rawCommands) {
             section += `  **Resolved command**${os.EOL}\`\`\`sh${os.EOL}${resolvedCommands}${os.EOL}\`\`\`${os.EOL}`;
@@ -297,11 +308,11 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       return item;
     };
     this.renderTerminalItem = (params) => {
-      const { terminal, theme, sessionId, terminalArrayIndex, terminalGroupName, variable, environmentVariables } = params;
+      const { terminal, theme, sessionId, terminalArrayIndex, terminalGroupName, variable, environmentVariables, joinOperator } = params;
       const { name: terminalName = "(empty)" } = terminal;
       const icon = theme.getIcon(terminal.icon, terminalGroupName, terminalName);
       const color = theme.getColor(terminal.color, terminalGroupName, terminalName);
-      const { rawCommands: terminalCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables);
+      const { rawCommands: terminalCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables, joinOperator);
       const hideCommandsInExplorerDescriptions = Configuration.getExperimentalConfig("hideCommandsInExplorerDescriptions") ?? false;
       const item = new TKTreeItem(terminalName);
       if (!hideCommandsInExplorerDescriptions) {

@@ -7,6 +7,7 @@ export interface SessionConfiguration {
   activateOnStartup?: boolean;
   keepExistingTerminals?: boolean;
   noClear?: boolean;
+  joinOperator?: string;
   openNodeOnStart?: string[];
   variable?: Record<string, string>;
   environments?: Record<string, Record<string, string>>;

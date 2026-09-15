@@ -1,3 +1,7 @@
+## 1.0.11
+
+Added a top-level `joinOperator` config (and matching `terminal-organizer-vscode.joinOperator` workspace setting), editable from the Activity Bar's **Global Configs** group, that sets the default operator used to join a terminal's multiple commands. A terminal's own `joinOperator` still overrides this global value, and if neither is set the previous OS-based default (`&` on Windows, `;` elsewhere) is used. The Sessions tree's per-terminal preview reflects the resolved operator too.
+
 ## 1.0.10
 
 Added inline **Remove Terminal** and **Remove Terminal Group** buttons in the Activity Bar's **Sessions** tree: a single terminal node now has its own trash button that removes just that terminal (including one inside a split-terminal group, without disturbing the rest of the group), and a split-terminal group node has a trash button that removes the whole group in one click.

@@ -188,6 +188,11 @@ Terminal Organizer stores sessions in a configuration object. Each session conta
     // Skip running the clear command during initialization.
     noClear: boolean,
 
+    // Default operator used to join a terminal's multiple commands (e.g. ";", "&&", "||")
+    // when the terminal doesn't specify its own "joinOperator" (see Terminal options below).
+    // A terminal's own "joinOperator" always overrides this global value.
+    joinOperator: string,
+
     // List of node names (e.g. "Sessions", "Variables", "Environments", a session name,
     // an environment name, or a split-terminal group name) that will be expanded by
     // default in the Activity Bar explorer view.
@@ -268,7 +273,9 @@ name: string,
 // The command list.
 commands: Array<string>,
 
-// The operators to join multiple commands. e.g. semicolon (;), logical OR (||), logical AND (&&) and more
+// The operators to join multiple commands. e.g. semicolon (;), logical OR (||), logical AND (&&) and more.
+// Overrides the top-level "joinOperator" for this terminal only. If neither is set, defaults
+// to "&" on Windows and ";" elsewhere.
 joinOperator?: string,
 
 // Automatically execute the specified commands.

@@ -52,6 +52,10 @@
             "description": "The name of the node to expand."
           }
         },
+        "joinOperator": {
+          "type": "string",
+          "description": "The default operator used to join a terminal's multiple commands (e.g. semicolon (;), logical OR (||), logical AND (&&)) when the terminal doesn't specify its own 'joinOperator'. A terminal's own 'joinOperator' always overrides this global value."
+        },
         "sessions": {
           "$ref": "#/definitions/sessions"
         },

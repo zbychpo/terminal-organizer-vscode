@@ -7,6 +7,7 @@ import { showErrorMessageWithDetail, showGenerateConfiguration, killAllTerminal 
 import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
 import { applyEnvironmentToTerminals } from '../utils/environment-merge';
+import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
 
 export var activeBySessionAsync = async (activeSession, isSaveActiveSession = false) => {
   try {
@@ -16,7 +17,7 @@ export var activeBySessionAsync = async (activeSession, isSaveActiveSession = fa
       return;
     }
     const config = await Configuration.load();
-    const { keepExistingTerminals = false, sessions, theme = "default", noClear = false, variable, environments = {}, activeEnvironment = "" } = config;
+    const { keepExistingTerminals = false, sessions, theme = "default", noClear = false, variable, environments = {}, activeEnvironment = "", joinOperator } = config;
     if (!sessions) {
       vscode.window.showWarningMessage(constants.notExistAnySessions);
       return;
@@ -34,14 +35,17 @@ export var activeBySessionAsync = async (activeSession, isSaveActiveSession = fa
     const activatedSession = substituteVariablesDeep(
       resolveVscodeVariablesDeep(
         applyEnvironmentToTerminals(
-          selectedSession.map((sessionItem) => {
-            if (Array.isArray(sessionItem)) {
-              const filtered = sessionItem.filter((i) => !i.disabled);
-              return filtered.length <= 0 ? undefined : filtered;
-            } else {
-              return sessionItem.disabled ? undefined : sessionItem;
-            }
-          }).filter(Boolean),
+          applyGlobalJoinOperator(
+            selectedSession.map((sessionItem) => {
+              if (Array.isArray(sessionItem)) {
+                const filtered = sessionItem.filter((i) => !i.disabled);
+                return filtered.length <= 0 ? undefined : filtered;
+              } else {
+                return sessionItem.disabled ? undefined : sessionItem;
+              }
+            }).filter(Boolean),
+            joinOperator
+          ),
           activeEnvironmentVariables
         )
       ),
