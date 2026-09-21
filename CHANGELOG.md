@@ -1,3 +1,7 @@
+## 1.0.12
+
+Added an inline **Duplicate** (copy) button to both sessions and environments in the Activity Bar explorer: it prompts for a name (pre-filled with a unique "name (copy)" suggestion, validated against existing names) and creates a full copy of the session's terminals/split-terminal groups or the environment's variables under that name.
+
 ## 1.0.11
 
 Added a top-level `joinOperator` config (and matching `terminal-organizer-vscode.joinOperator` workspace setting), editable from the Activity Bar's **Global Configs** group, that sets the default operator used to join a terminal's multiple commands. A terminal's own `joinOperator` still overrides this global value, and if neither is set the previous OS-based default (`&` on Windows, `;` elsewhere) is used. The Sessions tree's per-terminal preview reflects the resolved operator too.
