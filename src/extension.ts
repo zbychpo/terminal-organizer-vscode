@@ -21,6 +21,7 @@ import { openAsync } from './commands/openAsync';
 import { removeAsync } from './commands/removeAsync';
 import { duplicateSessionActivityAsync } from './commands/duplicateSessionActivityAsync';
 import { duplicateEnvironmentActivityAsync } from './commands/duplicateEnvironmentActivityAsync';
+import { duplicateTerminalActivityAsync } from './commands/duplicateTerminalActivityAsync';
 import { removeSessionActivityAsync } from './commands/removeSessionActivityAsync';
 import { removeTerminalActivityAsync } from './commands/removeTerminalActivityAsync';
 import { removeTerminalGroupActivityAsync } from './commands/removeTerminalGroupActivityAsync';
@@ -95,6 +96,9 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand(extCommands.removeSessionActivity, async (sessionTreeItem) => {
       await removeSessionActivityAsync(sessionTreeItem);
+    }),
+    vscode.commands.registerCommand(extCommands.duplicateTerminalActivity, async (terminalTreeItem) => {
+      await duplicateTerminalActivityAsync(terminalTreeItem);
     }),
     vscode.commands.registerCommand(extCommands.removeTerminalActivity, async (terminalTreeItem) => {
       await removeTerminalActivityAsync(terminalTreeItem);
