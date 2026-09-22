@@ -6,7 +6,7 @@ import { updateStatusBar } from '../utils/show-status-bar';
 import { showErrorMessageWithDetail, showGenerateConfiguration, killAllTerminal } from '../utils/utils';
 import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
-import { applyEnvironmentToTerminals } from '../utils/environment-merge';
+import { applyEnvironmentToTerminals, resolveEnvironmentVariables } from '../utils/environment-merge';
 import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
 
 export var activeBySessionAsync = async (activeSession, isSaveActiveSession = false) => {
@@ -31,7 +31,7 @@ export var activeBySessionAsync = async (activeSession, isSaveActiveSession = fa
       vscode.window.showWarningMessage(constants.notExistAnySpitTerminal.replace("{session}", activeSession));
       return;
     }
-    const activeEnvironmentVariables = environments[activeEnvironment] || {};
+    const activeEnvironmentVariables = resolveEnvironmentVariables(environments, activeEnvironment);
     const activatedSession = substituteVariablesDeep(
       resolveVscodeVariablesDeep(
         applyEnvironmentToTerminals(

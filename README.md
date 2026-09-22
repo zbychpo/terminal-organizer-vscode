@@ -256,6 +256,8 @@ Terminal Organizer stores sessions in a configuration object. Each session conta
     // Named sets of environment variables. See the "Environments" section below.
     environments: {
         name: {
+            // Optional: names of other environments to inherit variables from, least to most important.
+            inherits?: Array<string>,
             NAME: string
         }
     }
@@ -432,7 +434,39 @@ A terminal can still define its own `env` - only the keys it **doesn't** already
 
 With the `java17` environment above active, this terminal ends up with `JAVA_HOME=C:\Program Files\Java\jdk1.8.0` (its own value), plus `MAVEN_HOME` and `PATH` filled in from `java17`, plus `ILE_ELEMENTO=10`.
 
-Manage environments from the Activity Bar's **Environments** section: the **+** button on the group adds one, and each environment has inline actions to set it as **active** (✓), **add** a variable to it, or **remove** it entirely; each variable inside an environment has inline **edit**/**remove** actions. The Sessions tree's per-terminal tooltip shows the resulting merged `env` - i.e. exactly what will be passed to the terminal once the active environment and any variables are resolved.
+Manage environments from the Activity Bar's **Environments** section: the **+** button on the group adds one, and each environment has inline actions to set it as **active** (✓), **duplicate** it, **edit** its inheritance ($(type-hierarchy)), **add** a variable to it, or **remove** it entirely; each variable inside an environment has inline **edit**/**remove** actions. The Sessions tree's per-terminal tooltip shows the resulting merged `env` - i.e. exactly what will be passed to the terminal once the active environment and any variables are resolved.
+
+#### Environment inheritance ✨
+
+An environment can inherit variables from one or more other environments via `inherits`, a list of environment names. Environments listed later override values from environments listed earlier, and the environment's own variables always win over anything inherited:
+
+```jsonc
+{
+    "activeEnvironment": "java17-verbose",
+    "environments": {
+        "base": {
+            "PATH": "${env:PATH}"
+        },
+        "java17": {
+            "inherits": ["base"],
+            "JAVA_HOME": "${variable:javaHome}",
+            "PATH": "${variable:javaHome}\\bin;${env:PATH}"
+        },
+        "java17-verbose": {
+            // "logging" is applied after "java17", so its LOG_LEVEL wins if both defined it.
+            "inherits": ["java17", "logging"],
+            "LOG_LEVEL": "debug"
+        },
+        "logging": {
+            "LOG_LEVEL": "info"
+        }
+    }
+}
+```
+
+Here `java17-verbose` ends up with `JAVA_HOME`/`PATH` from `java17` (which itself pulled `PATH` from `base`), `LOG_LEVEL=info` from `logging`, then its own `LOG_LEVEL=debug` overrides that last. A circular chain (e.g. two environments inheriting from each other) is rejected when you edit the inheritance list.
+
+Use the inline **Edit Inheritance** ($(type-hierarchy)) button on an environment to check the other environments it should inherit from - the picker lists every other environment (the current one is never offered), pre-checked with its current `inherits`, with already-inherited environments kept first in their existing precedence order followed by the rest; a selection that would create a circular chain is rejected.
 
 ### Keybinding support
 

@@ -5,7 +5,7 @@ import { Configuration } from '../configuration/configuration';
 import { extCommands } from '../utils/constants';
 import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
-import { applyEnvironmentToTerminals } from '../utils/environment-merge';
+import { applyEnvironmentToTerminals, resolveEnvironmentVariables } from '../utils/environment-merge';
 import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
 
 var buildResolvedTerminalPreview = (terminal, variable, environmentVariables, globalJoinOperator) => {
@@ -70,7 +70,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
         activeEnvironment = ""
       } = config;
       const resolvedVariable = resolveVscodeVariablesDeep(variable);
-      const resolvedActiveEnvironmentVariables = resolveVscodeVariablesDeep(environments[activeEnvironment] || {});
+      const resolvedActiveEnvironmentVariables = resolveVscodeVariablesDeep(resolveEnvironmentVariables(environments, activeEnvironment));
       const killProcess = Configuration.getExperimentalConfig("killProcess");
       const isWSLSupport = Configuration.getExperimentalConfig("wslSupport");
       const isQuickRun = Configuration.getExperimentalConfig("quickRun");
@@ -225,7 +225,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
             ? new vscode.MarkdownString(`### **Environments**${os.EOL}${Object.keys(environments).map((name) => `- ${name}${name === activeEnvironment ? " (active)" : ""}`).join(os.EOL)}`)
             : new vscode.MarkdownString(`### **Environments**${os.EOL}No environments defined yet.`),
           children: Object.entries(environments).map(([name, value]) =>
-            this.renderEnvironmentItem({ name, value, isActive: name === activeEnvironment, openNodeOnStart })
+            this.renderEnvironmentItem({ name, value, isActive: name === activeEnvironment, openNodeOnStart, environments })
           )
         })
       ];
@@ -352,16 +352,27 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       return item;
     };
     this.renderEnvironmentItem = (params) => {
-      const { name, value = {}, isActive, openNodeOnStart = [] } = params;
-      const entries = Object.entries(value);
+      const { name, value = {}, isActive, openNodeOnStart = [], environments = {} } = params;
+      const inherits = Array.isArray(value.inherits) ? value.inherits : [];
+      const entries = Object.entries(value).filter(([key]) => key !== "inherits");
+      const ownKeys = new Set(entries.map(([key]) => key));
+      const resolvedEntries = Object.entries(resolveEnvironmentVariables(environments, name));
       const item = new TKTreeItem(
         name,
         entries.map(([key, val]) => this.renderEnvironmentVariableItem({ environmentName: name, name: key, value: val }))
       );
-      item.description = isActive ? "active" : "";
-      item.tooltip = new vscode.MarkdownString(`### **${name}**${isActive ? " (active)" : ""}${os.EOL}`).appendMarkdown(
-        entries.length > 0 ? entries.map(([key, val]) => `- **${key}**: \`${val}\``).join(os.EOL) : "No environment variables defined yet."
-      );
+      item.description = [isActive ? "active" : "", inherits.length > 0 ? `inherits: ${inherits.join(", ")}` : ""]
+        .filter(Boolean)
+        .join(" · ");
+      item.tooltip = new vscode.MarkdownString(`### **${name}**${isActive ? " (active)" : ""}${os.EOL}`)
+        .appendMarkdown(inherits.length > 0 ? `**Inherits** (last wins): ${inherits.join(" → ")}${os.EOL}${os.EOL}` : "")
+        .appendMarkdown(
+          resolvedEntries.length > 0
+            ? `**Resolved variables** (after inheritance)${os.EOL}${resolvedEntries
+                .map(([key, val]) => `- **${key}**: \`${val}\`${ownKeys.has(key) ? "" : " _(inherited)_"}`)
+                .join(os.EOL)}`
+            : "No environment variables defined yet."
+        );
       item.contextValue = "environment-context";
       item.iconPath = new vscode.ThemeIcon(isActive ? "pass-filled" : "circle-outline", isActive ? new vscode.ThemeColor("terminal.ansiGreen") : undefined);
       item.environmentName = name;

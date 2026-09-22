@@ -1,3 +1,7 @@
+## 1.0.13
+
+Added inheritance for **Environments**: an environment can now set `inherits` to a list of other environment names, resolved before its own variables - environments later in the list override values from earlier ones, and the environment's own variables always win over anything inherited. A new inline **Edit Inheritance** button on each environment opens a checklist of the other available environments (pre-checked with the current value, current environment excluded) to add or clear from its inheritance, rejecting any selection that would create a circular chain. Hovering over an environment in the Activity Bar now shows its fully resolved variables (after inheritance is applied, with inherited-only values marked), matching how a terminal's tooltip already shows its fully resolved commands and `env`.
+
 ## 1.0.12
 
 Added an inline **Duplicate** (copy) button to both sessions and environments in the Activity Bar explorer: it prompts for a name (pre-filled with a unique "name (copy)" suggestion, validated against existing names) and creates a full copy of the session's terminals/split-terminal groups or the environment's variables under that name.

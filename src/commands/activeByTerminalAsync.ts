@@ -6,7 +6,7 @@ import { findTerminal } from '../utils/find-terminal-in-config';
 import { showErrorMessageWithDetail } from '../utils/utils';
 import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
-import { applyEnvironmentToTerminals } from '../utils/environment-merge';
+import { applyEnvironmentToTerminals, resolveEnvironmentVariables } from '../utils/environment-merge';
 import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
 
 export var activeByTerminalAsync = async (sessionId, terminalArrayIndex, terminalItemName) => {
@@ -19,7 +19,7 @@ export var activeByTerminalAsync = async (sessionId, terminalArrayIndex, termina
     const { createTerminal, getCwdPath } = terminalBrowserify.TerminalApi.instance();
     const config = await Configuration.load();
     const { theme = "default", noClear = false, variable, environments = {}, activeEnvironment = "", joinOperator } = config;
-    const activeEnvironmentVariables = environments[activeEnvironment] || {};
+    const activeEnvironmentVariables = resolveEnvironmentVariables(environments, activeEnvironment);
     const terminal = substituteVariablesDeep(
       resolveVscodeVariablesDeep(applyEnvironmentToTerminals(applyGlobalJoinOperator(foundTerminal, joinOperator), activeEnvironmentVariables)),
       resolveVscodeVariablesDeep(variable)

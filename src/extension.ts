@@ -10,6 +10,7 @@ import { clearAllAsync } from './commands/clearAllAsync';
 import { editConfigAsync } from './commands/editConfigAsync';
 import { editVariableAsync } from './commands/editVariableAsync';
 import { editEnvironmentVariableAsync } from './commands/editEnvironmentVariableAsync';
+import { editEnvironmentInheritanceAsync } from './commands/editEnvironmentInheritanceAsync';
 import { generateAsync } from './commands/generateAsync';
 import { importAsync } from './commands/importAsync';
 import { importVariablesAsync } from './commands/importVariablesAsync';
@@ -190,6 +191,9 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand(extCommands.removeEnvironmentVariableActivity, async (environmentVariableTreeItem) => {
       await removeEnvironmentVariableAsync(environmentVariableTreeItem);
+    }),
+    vscode.commands.registerCommand(extCommands.editEnvironmentInheritanceActivity, async (environmentTreeItem) => {
+      await editEnvironmentInheritanceAsync(environmentTreeItem);
     })
   );
   Configuration.watch(() => treeProvider.refresh());

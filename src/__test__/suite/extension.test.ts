@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { substituteVariable, substituteVariablesDeep } from '../../utils/variable-substitution';
 import { resolveVscodeVariable, resolveVscodeVariablesDeep } from '../../utils/vscode-variable-resolver';
-import { applyEnvironmentToTerminals } from '../../utils/environment-merge';
+import { applyEnvironmentToTerminals, resolveEnvironmentVariables, hasCircularInheritance } from '../../utils/environment-merge';
 
 const EXTENSION_ID = 'zbigniewpowroznik.terminal-organizer-vscode';
 const LATEST_SCHEMA_URI = 'terminal-organizer-vscode-schema:/v11/terminal-organizer-vscode.json';
@@ -76,6 +76,10 @@ suite('Terminal Organizer Extension Test Suite', () => {
 
         assert.ok(schema.definitions?.environments, 'definitions.environments is missing');
         assert.ok(schema.definitions?.environmentItem, 'definitions.environmentItem is missing');
+        assert.ok(
+            schema.definitions?.environmentItem?.properties?.inherits,
+            'definitions.environmentItem is missing the "inherits" property'
+        );
         assert.ok(
             schema.definitions['terminal-organizer-vscode'].properties.activeEnvironment,
             'top-level "activeEnvironment" property is missing'
@@ -375,5 +379,83 @@ suite('Terminal Organizer Extension Test Suite', () => {
         } finally {
             delete process.env.TERMINAL_KEEPER_TEST_PATH;
         }
+    });
+
+    test('resolveEnvironmentVariables merges an "inherits" chain with later entries winning, then lets the environment\'s own variables win over all of them', () => {
+        const environments = {
+            base: { PATH: 'base-path', ONLY_BASE: '1' },
+            logging: { LOG_LEVEL: 'info' },
+            verboseLogging: { LOG_LEVEL: 'debug' },
+            java17: {
+                inherits: ['base', 'logging', 'verboseLogging'],
+                JAVA_HOME: 'C:\\java17'
+            }
+        };
+
+        const resolved = resolveEnvironmentVariables(environments, 'java17');
+
+        assert.deepStrictEqual(resolved, {
+            PATH: 'base-path',
+            ONLY_BASE: '1',
+            LOG_LEVEL: 'debug', // verboseLogging is later in the list than logging, so it wins
+            JAVA_HOME: 'C:\\java17'
+        });
+    });
+
+    test('resolveEnvironmentVariables lets an environment\'s own variables override anything inherited, even for keys also set by a parent', () => {
+        const environments = {
+            base: { JAVA_HOME: 'C:\\java8', PATH: 'base-path' },
+            java17: { inherits: ['base'], JAVA_HOME: 'C:\\java17' }
+        };
+
+        const resolved = resolveEnvironmentVariables(environments, 'java17');
+
+        assert.deepStrictEqual(resolved, { JAVA_HOME: 'C:\\java17', PATH: 'base-path' });
+    });
+
+    test('resolveEnvironmentVariables resolves a multi-level inheritance chain recursively', () => {
+        const environments = {
+            base: { A: 'base' },
+            mid: { inherits: ['base'], B: 'mid' },
+            top: { inherits: ['mid'], C: 'top' }
+        };
+
+        assert.deepStrictEqual(resolveEnvironmentVariables(environments, 'top'), { A: 'base', B: 'mid', C: 'top' });
+    });
+
+    test('resolveEnvironmentVariables is cycle-safe and does not hang or throw on a circular "inherits" chain', () => {
+        const environments = {
+            a: { inherits: ['b'], A: '1' },
+            b: { inherits: ['a'], B: '2' }
+        };
+
+        assert.deepStrictEqual(resolveEnvironmentVariables(environments, 'a'), { A: '1', B: '2' });
+    });
+
+    test('resolveEnvironmentVariables returns an empty object for a missing or empty environment name', () => {
+        assert.deepStrictEqual(resolveEnvironmentVariables({ base: { A: '1' } }, ''), {});
+        assert.deepStrictEqual(resolveEnvironmentVariables({ base: { A: '1' } }, 'doesNotExist'), {});
+        assert.deepStrictEqual(resolveEnvironmentVariables(undefined, 'base'), {});
+    });
+
+    test('hasCircularInheritance detects direct and indirect cycles but not diamond-shaped inheritance', () => {
+        assert.strictEqual(
+            hasCircularInheritance({ a: { inherits: ['a'] } }, 'a'),
+            true,
+            'an environment listing itself is a direct cycle'
+        );
+        assert.strictEqual(
+            hasCircularInheritance({ a: { inherits: ['b'] }, b: { inherits: ['a'] } }, 'a'),
+            true,
+            'two environments inheriting from each other is an indirect cycle'
+        );
+        assert.strictEqual(
+            hasCircularInheritance(
+                { base: {}, a: { inherits: ['base'] }, b: { inherits: ['base'] }, top: { inherits: ['a', 'b'] } },
+                'top'
+            ),
+            false,
+            'a diamond (top -> a,b -> base) is not a cycle even though "base" is reached twice'
+        );
     });
 });

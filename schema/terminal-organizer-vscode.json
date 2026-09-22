@@ -99,9 +99,20 @@
     "environmentItem": {
       "type": "object",
       "additionalProperties": false,
-      "description": "A named set of environment variables. Values can reference variables (\"${variable:NAME}\") and existing process environment variables (\"${env:NAME}\").",
+      "description": "A named set of environment variables. Values can reference variables (\"${variable:NAME}\") and existing process environment variables (\"${env:NAME}\"). Set \"inherits\" to pull in variables from other environments before this one's own variables are applied.",
+      "properties": {
+        "inherits": {
+          "type": "array",
+          "default": [],
+          "description": "Names of other environments (from \"environments\") to merge in before this environment's own variables, listed from least to most important - a later entry overrides a value from an earlier one, and this environment's own variables always take precedence over anything inherited.",
+          "items": {
+            "type": "string",
+            "description": "The name of an environment to inherit from."
+          }
+        }
+      },
       "patternProperties": {
-        "^.*$": {
+        "^(?!inherits$).*$": {
           "type": "string"
         }
       }

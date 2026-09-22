@@ -40,7 +40,8 @@ export var extCommands = {
   setActiveEnvironmentActivity: "terminal-organizer-vscode.set-active-environment-activity",
   addEnvironmentVariableActivity: "terminal-organizer-vscode.add-environment-variable-activity",
   editEnvironmentVariableActivity: "terminal-organizer-vscode.edit-environment-variable-activity",
-  removeEnvironmentVariableActivity: "terminal-organizer-vscode.remove-environment-variable-activity"
+  removeEnvironmentVariableActivity: "terminal-organizer-vscode.remove-environment-variable-activity",
+  editEnvironmentInheritanceActivity: "terminal-organizer-vscode.edit-environment-inheritance-activity"
 };
 export var ACTIVITY_VIEW_ID = "terminalOrganizerActivityView";
 export var sysCommands = {
@@ -171,6 +172,14 @@ export var constants = {
   editEnvironmentVariableFailed: "Failed to edit the environment variable.",
   removeEnvironmentVariableFailed: "Failed to remove the environment variable.",
   removeEnvironmentVariableSuccess: "The environment variable was successfully removed!",
+  environmentVariableNameReserved: 'The name "inherits" is reserved and cannot be used as an environment variable name.',
+  // Environment inheritance
+  editEnvironmentInheritanceTitle: 'Edit inheritance for "{name}"',
+  editEnvironmentInheritancePlaceHolder: "Select environments to inherit from (checked order sets precedence: later checked wins)",
+  environmentInheritanceNoOtherEnvironments: "There are no other environments to inherit from yet.",
+  environmentInheritanceCircular: "This would create a circular inheritance chain.",
+  editEnvironmentInheritanceSuccess: "The environment's inheritance was successfully updated!",
+  editEnvironmentInheritanceFailed: "Failed to edit the environment's inheritance.",
   // The components
   yesButton: "Yes",
   noButton: "No",

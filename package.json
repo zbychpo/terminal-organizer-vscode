@@ -3,7 +3,7 @@
     "displayName": "Terminal Organizer VSCode",
     "description": "Elevate your terminal experience! Effortlessly configuration, seamlessly restore your last session, and manage sessions with ease. Personalize your workspace with colorful themes and boost productivity by importing commands swiftly.",
     "icon": "assets/logo.png",
-    "version": "1.0.12",
+    "version": "1.0.13",
     "main": "./dist/extension.js",
     "browser": "./dist/web/extension.js",
     "preview": false,
@@ -290,6 +290,11 @@
                 "command": "terminal-organizer-vscode.remove-environment-variable-activity",
                 "title": "Remove Environment Variable",
                 "icon": "$(trash)"
+            },
+            {
+                "command": "terminal-organizer-vscode.edit-environment-inheritance-activity",
+                "title": "Edit Environment Inheritance",
+                "icon": "$(type-hierarchy)"
             }
         ],
         "menus": {
@@ -487,14 +492,19 @@
                     "group": "inline@2"
                 },
                 {
-                    "command": "terminal-organizer-vscode.add-environment-variable-activity",
+                    "command": "terminal-organizer-vscode.edit-environment-inheritance-activity",
                     "when": "viewItem == environment-context",
                     "group": "inline@3"
                 },
                 {
-                    "command": "terminal-organizer-vscode.remove-environment-activity",
+                    "command": "terminal-organizer-vscode.add-environment-variable-activity",
                     "when": "viewItem == environment-context",
                     "group": "inline@4"
+                },
+                {
+                    "command": "terminal-organizer-vscode.remove-environment-activity",
+                    "when": "viewItem == environment-context",
+                    "group": "inline@5"
                 },
                 {
                     "command": "terminal-organizer-vscode.edit-environment-variable-activity",

@@ -1,5 +1,12 @@
 export type TerminalThemeName = "default" | "inkwell" | "chaos" | "tribe" | "iconic" | "neon" | "solarized" | "dice";
 
+export interface EnvironmentItem {
+  // Names of other environments to merge in before this environment's own variables,
+  // listed from least to most important - a later entry overrides an earlier one.
+  inherits?: string[];
+  [variableName: string]: string | string[] | undefined;
+}
+
 export interface SessionConfiguration {
   $schema?: string;
   theme?: TerminalThemeName;
@@ -10,7 +17,7 @@ export interface SessionConfiguration {
   joinOperator?: string;
   openNodeOnStart?: string[];
   variable?: Record<string, string>;
-  environments?: Record<string, Record<string, string>>;
+  environments?: Record<string, EnvironmentItem>;
   activeEnvironment?: string;
   sessions?: Record<string, any[]>;
   [key: string]: any;
