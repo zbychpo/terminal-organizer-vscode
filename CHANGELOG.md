@@ -1,3 +1,7 @@
+## 1.0.15
+
+Fixed **Import** (from `Makefile`, `package.json`, `composer.json`, Gradle, Pipenv, Ant, Grunt, and Gulp) so re-importing into a session no longer duplicates terminals: a target/script whose name already exists in that session now has its command/cwd replaced in place (keeping it in its split-terminal group if it was in one), while a genuinely new name is still appended as before.
+
 ## 1.0.14
 
 Added an inline **Duplicate Terminal** (copy) button to a single terminal in the Activity Bar's **Sessions** tree: it prompts for a name (pre-filled with a unique "name (copy)" suggestion, validated against every terminal name already used in any session) and inserts a full copy of that terminal right after the original - staying inside the same split-terminal group if the original was part of one.

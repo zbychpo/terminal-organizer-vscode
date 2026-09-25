@@ -94,6 +94,30 @@ var chooseFilePath = async (filePaths) => {
   }
   return selectedFilePath;
 };
+var mergeImportedTerminals = (previousItems, importedItems) => {
+  const importedByName = new Map(importedItems.map((item) => [item.name, item]));
+  const consumedNames = new Set();
+  const merged = previousItems.map((sessionItem) => {
+    if (Array.isArray(sessionItem)) {
+      return sessionItem.map((terminal) => {
+        const replacement = importedByName.get(terminal.name);
+        if (!replacement) {
+          return terminal;
+        }
+        consumedNames.add(terminal.name);
+        return Object.assign({}, terminal, replacement);
+      });
+    }
+    const replacement = importedByName.get(sessionItem.name);
+    if (!replacement) {
+      return sessionItem;
+    }
+    consumedNames.add(sessionItem.name);
+    return Object.assign({}, sessionItem, replacement);
+  });
+  const newItems = importedItems.filter((item) => !consumedNames.has(item.name));
+  return merged.concat(newItems);
+};
 var chooseSessionName = async () => {
   const config = await Configuration.load();
   if (!config.sessions) {
@@ -182,7 +206,7 @@ export var importAsync = async (fileType) => {
       config.sessions = { default: [] };
     }
     const previousTerminalItems = config.sessions[sessionName] || [];
-    config.sessions[sessionName] = previousTerminalItems.concat(terminalItems);
+    config.sessions[sessionName] = mergeImportedTerminals(previousTerminalItems, terminalItems);
     await Configuration.save(config);
   } catch (error) {
     showErrorMessageWithDetail(constants.importFileFailed.replace("{fileType}", fileType), error);
