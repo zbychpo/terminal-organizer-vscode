@@ -3,7 +3,7 @@
     "displayName": "Terminal Organizer VSCode",
     "description": "Elevate your terminal experience! Effortlessly configuration, seamlessly restore your last session, and manage sessions with ease. Personalize your workspace with colorful themes and boost productivity by importing commands swiftly.",
     "icon": "assets/logo.png",
-    "version": "1.0.15",
+    "version": "1.0.16",
     "main": "./dist/extension.js",
     "browser": "./dist/web/extension.js",
     "preview": false,
@@ -153,9 +153,24 @@
                 "icon": "$(collapse-all)"
             },
             {
+                "command": "terminal-organizer-vscode.add-session-activity",
+                "title": "Add Session",
+                "icon": "$(add)"
+            },
+            {
                 "command": "terminal-organizer-vscode.active-session-activity",
                 "title": "Active Session",
                 "icon": "$(run)"
+            },
+            {
+                "command": "terminal-organizer-vscode.active-multiple-sessions-activity",
+                "title": "Activate Multiple Sessions",
+                "icon": "$(run-all)"
+            },
+            {
+                "command": "terminal-organizer-vscode.add-terminal-activity",
+                "title": "Add Terminal",
+                "icon": "$(add)"
             },
             {
                 "command": "terminal-organizer-vscode.duplicate-session-activity",
@@ -168,9 +183,24 @@
                 "icon": "$(trash)"
             },
             {
+                "command": "terminal-organizer-vscode.move-session-up-activity",
+                "title": "Move Session Up",
+                "icon": "$(arrow-up)"
+            },
+            {
+                "command": "terminal-organizer-vscode.move-session-down-activity",
+                "title": "Move Session Down",
+                "icon": "$(arrow-down)"
+            },
+            {
                 "command": "terminal-organizer-vscode.send-to-new-terminal-activity",
                 "title": "Send to new Terminal",
                 "icon": "$(send)"
+            },
+            {
+                "command": "terminal-organizer-vscode.edit-terminal-activity",
+                "title": "Edit Terminal",
+                "icon": "$(edit)"
             },
             {
                 "command": "terminal-organizer-vscode.duplicate-terminal-activity",
@@ -186,6 +216,26 @@
                 "command": "terminal-organizer-vscode.remove-terminal-group-activity",
                 "title": "Remove Terminal Group",
                 "icon": "$(trash)"
+            },
+            {
+                "command": "terminal-organizer-vscode.move-terminal-up-activity",
+                "title": "Move Terminal Up",
+                "icon": "$(arrow-up)"
+            },
+            {
+                "command": "terminal-organizer-vscode.move-terminal-down-activity",
+                "title": "Move Terminal Down",
+                "icon": "$(arrow-down)"
+            },
+            {
+                "command": "terminal-organizer-vscode.move-terminal-group-up-activity",
+                "title": "Move Terminal Group Up",
+                "icon": "$(arrow-up)"
+            },
+            {
+                "command": "terminal-organizer-vscode.move-terminal-group-down-activity",
+                "title": "Move Terminal Group Down",
+                "icon": "$(arrow-down)"
             },
             {
                 "command": "terminal-organizer-vscode.send-to-current-terminal-activity",
@@ -230,6 +280,10 @@
             {
                 "command": "terminal-organizer-vscode.import-from-gulp",
                 "title": "From gulp (e.g. gulpfile.mjs, gulpfile.js, GULPFILE.js)"
+            },
+            {
+                "command": "terminal-organizer-vscode.import-from-tasks",
+                "title": "From VS Code tasks (e.g. .vscode/tasks.json)"
             },
             {
                 "command": "terminal-organizer-vscode.run-terminal-by-name",
@@ -300,6 +354,11 @@
                 "command": "terminal-organizer-vscode.edit-environment-inheritance-activity",
                 "title": "Edit Environment Inheritance",
                 "icon": "$(type-hierarchy)"
+            },
+            {
+                "command": "terminal-organizer-vscode.toggle-environment-variable-mask-activity",
+                "title": "Toggle Mask",
+                "icon": "$(eye)"
             }
         ],
         "menus": {
@@ -335,6 +394,10 @@
                 {
                     "command": "terminal-organizer-vscode.import-from-gulp",
                     "group": "source@8"
+                },
+                {
+                    "command": "terminal-organizer-vscode.import-from-tasks",
+                    "group": "source@9"
                 }
             ],
             "editor/context": [
@@ -355,14 +418,19 @@
                     "group": "navigation@1"
                 },
                 {
-                    "command": "terminal-organizer-vscode.open",
+                    "command": "terminal-organizer-vscode.active-multiple-sessions-activity",
                     "when": "view == terminalOrganizerActivityView",
                     "group": "navigation@2"
                 },
                 {
-                    "command": "terminal-organizer-vscode.collapse-all-activity",
+                    "command": "terminal-organizer-vscode.open",
                     "when": "view == terminalOrganizerActivityView",
                     "group": "navigation@3"
+                },
+                {
+                    "command": "terminal-organizer-vscode.collapse-all-activity",
+                    "when": "view == terminalOrganizerActivityView",
+                    "group": "navigation@4"
                 },
                 {
                     "command": "terminal-organizer-vscode.refresh-activity",
@@ -407,19 +475,39 @@
             ],
             "view/item/context": [
                 {
+                    "command": "terminal-organizer-vscode.add-session-activity",
+                    "when": "viewItem == sessions-group-context",
+                    "group": "inline@1"
+                },
+                {
                     "command": "terminal-organizer-vscode.active-session-activity",
                     "when": "viewItem == session-context",
                     "group": "inline@1"
                 },
                 {
-                    "command": "terminal-organizer-vscode.duplicate-session-activity",
+                    "command": "terminal-organizer-vscode.add-terminal-activity",
                     "when": "viewItem == session-context",
                     "group": "inline@2"
                 },
                 {
-                    "command": "terminal-organizer-vscode.remove-session-activity",
+                    "command": "terminal-organizer-vscode.duplicate-session-activity",
                     "when": "viewItem == session-context",
                     "group": "inline@3"
+                },
+                {
+                    "command": "terminal-organizer-vscode.remove-session-activity",
+                    "when": "viewItem == session-context",
+                    "group": "inline@4"
+                },
+                {
+                    "command": "terminal-organizer-vscode.move-session-up-activity",
+                    "when": "viewItem == session-context",
+                    "group": "inline@5"
+                },
+                {
+                    "command": "terminal-organizer-vscode.move-session-down-activity",
+                    "when": "viewItem == session-context",
+                    "group": "inline@6"
                 },
                 {
                     "command": "terminal-organizer-vscode.send-to-new-terminal-activity",
@@ -427,19 +515,49 @@
                     "group": "inline@1"
                 },
                 {
-                    "command": "terminal-organizer-vscode.duplicate-terminal-activity",
+                    "command": "terminal-organizer-vscode.edit-terminal-activity",
                     "when": "viewItem == terminal-context",
                     "group": "inline@2"
                 },
                 {
-                    "command": "terminal-organizer-vscode.remove-terminal-activity",
+                    "command": "terminal-organizer-vscode.duplicate-terminal-activity",
                     "when": "viewItem == terminal-context",
                     "group": "inline@3"
                 },
                 {
-                    "command": "terminal-organizer-vscode.remove-terminal-group-activity",
+                    "command": "terminal-organizer-vscode.remove-terminal-activity",
+                    "when": "viewItem == terminal-context",
+                    "group": "inline@4"
+                },
+                {
+                    "command": "terminal-organizer-vscode.move-terminal-up-activity",
+                    "when": "viewItem == terminal-context",
+                    "group": "inline@5"
+                },
+                {
+                    "command": "terminal-organizer-vscode.move-terminal-down-activity",
+                    "when": "viewItem == terminal-context",
+                    "group": "inline@6"
+                },
+                {
+                    "command": "terminal-organizer-vscode.add-terminal-activity",
                     "when": "viewItem == terminal-array-context",
                     "group": "inline@2"
+                },
+                {
+                    "command": "terminal-organizer-vscode.remove-terminal-group-activity",
+                    "when": "viewItem == terminal-array-context",
+                    "group": "inline@3"
+                },
+                {
+                    "command": "terminal-organizer-vscode.move-terminal-group-up-activity",
+                    "when": "viewItem == terminal-array-context",
+                    "group": "inline@4"
+                },
+                {
+                    "command": "terminal-organizer-vscode.move-terminal-group-down-activity",
+                    "when": "viewItem == terminal-array-context",
+                    "group": "inline@5"
                 },
                 {
                     "command": "terminal-organizer-vscode.send-to-new-terminal-activity",
@@ -517,14 +635,19 @@
                     "group": "inline@5"
                 },
                 {
-                    "command": "terminal-organizer-vscode.edit-environment-variable-activity",
+                    "command": "terminal-organizer-vscode.toggle-environment-variable-mask-activity",
                     "when": "viewItem == environment-variable-context",
                     "group": "inline@1"
                 },
                 {
-                    "command": "terminal-organizer-vscode.remove-environment-variable-activity",
+                    "command": "terminal-organizer-vscode.edit-environment-variable-activity",
                     "when": "viewItem == environment-variable-context",
                     "group": "inline@2"
+                },
+                {
+                    "command": "terminal-organizer-vscode.remove-environment-variable-activity",
+                    "when": "viewItem == environment-variable-context",
+                    "group": "inline@3"
                 }
             ],
             "explorer/context": [
@@ -677,6 +800,7 @@
         "@vscode-utility/fs-browserify": "^1.0.8",
         "@vscode-utility/terminal-browserify": "^1.0.5",
         "glob": "^13.0.6",
+        "jsonc-parser": "^3.3.1",
         "xml2js": "^0.6.2"
     },
     "author": {

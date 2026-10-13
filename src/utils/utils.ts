@@ -57,6 +57,19 @@ export var getSessionQuickPickItems = (sessions: Record<string, any[]>): vscode.
   });
   return sessionsWithDescription;
 };
+export var collectAllTerminalNames = (sessions): Set<string> => {
+  const names = new Set<string>();
+  Object.values(sessions || {}).forEach((session: any[]) => {
+    session.forEach((sessionItem) => {
+      if (Array.isArray(sessionItem)) {
+        sessionItem.forEach((terminal) => names.add(terminal.name));
+      } else {
+        names.add(sessionItem.name);
+      }
+    });
+  });
+  return names;
+};
 export var getTabWidth = () => {
   let prettierTabWidth = vscode.workspace.getConfiguration().get("prettier.tabWidth");
   if (!Number.isNaN(prettierTabWidth) && Number(prettierTabWidth) > 0) {

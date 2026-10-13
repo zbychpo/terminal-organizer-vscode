@@ -10,11 +10,21 @@ export var extCommands = {
   killAll: "terminal-organizer-vscode.kill-all",
   refresh: "terminal-organizer-vscode.refresh-activity",
   activeSessionActivity: "terminal-organizer-vscode.active-session-activity",
+  activeMultipleSessionsActivity: "terminal-organizer-vscode.active-multiple-sessions-activity",
+  addSessionActivity: "terminal-organizer-vscode.add-session-activity",
   duplicateSessionActivity: "terminal-organizer-vscode.duplicate-session-activity",
   removeSessionActivity: "terminal-organizer-vscode.remove-session-activity",
+  moveSessionUpActivity: "terminal-organizer-vscode.move-session-up-activity",
+  moveSessionDownActivity: "terminal-organizer-vscode.move-session-down-activity",
+  addTerminalActivity: "terminal-organizer-vscode.add-terminal-activity",
+  editTerminalActivity: "terminal-organizer-vscode.edit-terminal-activity",
   duplicateTerminalActivity: "terminal-organizer-vscode.duplicate-terminal-activity",
   removeTerminalActivity: "terminal-organizer-vscode.remove-terminal-activity",
   removeTerminalGroupActivity: "terminal-organizer-vscode.remove-terminal-group-activity",
+  moveTerminalUpActivity: "terminal-organizer-vscode.move-terminal-up-activity",
+  moveTerminalDownActivity: "terminal-organizer-vscode.move-terminal-down-activity",
+  moveTerminalGroupUpActivity: "terminal-organizer-vscode.move-terminal-group-up-activity",
+  moveTerminalGroupDownActivity: "terminal-organizer-vscode.move-terminal-group-down-activity",
   importFromNPMActivity: "terminal-organizer-vscode.import-from-npm",
   importFromComposerActivity: "terminal-organizer-vscode.import-from-composer",
   importFromMakeActivity: "terminal-organizer-vscode.import-from-make",
@@ -23,6 +33,7 @@ export var extCommands = {
   importFromAntActivity: "terminal-organizer-vscode.import-from-ant",
   importFromGruntActivity: "terminal-organizer-vscode.import-from-grunt",
   importFromGulpActivity: "terminal-organizer-vscode.import-from-gulp",
+  importFromTasksActivity: "terminal-organizer-vscode.import-from-tasks",
   sendToNewTerminalActivity: "terminal-organizer-vscode.send-to-new-terminal-activity",
   sendToCurrentTerminalActivity: "terminal-organizer-vscode.send-to-current-terminal-activity",
   copyCommandActivity: "terminal-organizer-vscode.copy-command-activity",
@@ -42,7 +53,8 @@ export var extCommands = {
   addEnvironmentVariableActivity: "terminal-organizer-vscode.add-environment-variable-activity",
   editEnvironmentVariableActivity: "terminal-organizer-vscode.edit-environment-variable-activity",
   removeEnvironmentVariableActivity: "terminal-organizer-vscode.remove-environment-variable-activity",
-  editEnvironmentInheritanceActivity: "terminal-organizer-vscode.edit-environment-inheritance-activity"
+  editEnvironmentInheritanceActivity: "terminal-organizer-vscode.edit-environment-inheritance-activity",
+  toggleEnvironmentVariableMaskActivity: "terminal-organizer-vscode.toggle-environment-variable-mask-activity"
 };
 export var ACTIVITY_VIEW_ID = "terminalOrganizerActivityView";
 export var sysCommands = {
@@ -68,6 +80,8 @@ export var constants = {
   // Active terminal session
   selectSessionActiveTitle: "Select a session to activate",
   selectSessionActivePlaceHolder: "Select session...",
+  selectMultipleSessionsActiveTitle: "Select the sessions to activate together",
+  selectMultipleSessionsActivePlaceHolder: "Select session(s)... (existing terminals are kept between them)",
   selectFileTitle: "Select a file to import",
   selectFilePlaceHolder: "Select file...",
   activeSessionFailed: "Failed to activate the session.",
@@ -85,6 +99,9 @@ export var constants = {
   configurationFileAlreadyExist: "A configuration file already exists, cannot generate a new one.",
   terminalWillBeDisabled: "Cannot execute terminal because the selected terminal is currently disabled.",
   groupTerminalWillBeDisabled: "Cannot execute group terminal because all terminals in the group are currently disabled.",
+  // Add a new session
+  addSessionSuccess: "The session was successfully added!",
+  addSessionFailed: "Failed to add the session.",
   // Remove the terminal session
   selectSessionRemoveTitle: "Select a session to remove:",
   selectSessionRemovePlaceHolder: "Select session...",
@@ -95,6 +112,9 @@ export var constants = {
   enterDuplicateSessionNameTitle: "Please enter a name for the duplicated session.",
   duplicateSessionSuccess: "The session was successfully duplicated!",
   duplicateSessionFailed: "Failed to duplicate the session.",
+  enterTerminalNameTitle: "Please enter the terminal name.",
+  addTerminalSuccess: "The terminal was successfully added!",
+  addTerminalFailed: "Failed to add the terminal.",
   removeTerminalSuccess: "The terminal was successfully removed!",
   removeTerminalFailed: "Failed to remove the terminal.",
   removeTerminalGroupSuccess: "The terminal group was successfully removed!",
@@ -105,6 +125,20 @@ export var constants = {
   terminalNameIsDuplicated: "A terminal with this name already exists.",
   duplicateTerminalSuccess: "The terminal was successfully duplicated!",
   duplicateTerminalFailed: "Failed to duplicate the terminal.",
+  // Reordering
+  moveSessionFailed: "Failed to move the session.",
+  moveTerminalFailed: "Failed to move the terminal.",
+  moveTerminalGroupFailed: "Failed to move the terminal group.",
+  // Edit terminal
+  editTerminalFieldTitle: 'Edit "{name}"',
+  editTerminalFieldPlaceHolder: "Select a field to edit...",
+  editTerminalNamePlaceHolder: "e.g. build, watch",
+  editTerminalJsonArrayPlaceHolder: 'A JSON array of strings, e.g. ["npm install", "npm run build"]',
+  editTerminalJsonArrayInvalid: "Must be a JSON array of strings, e.g. [\"value\"].",
+  editTerminalEnvPlaceHolder: 'A JSON object of environment variables, e.g. {"NODE_ENV": "production"}',
+  editTerminalEnvInvalid: "Must be a JSON object whose values are strings, e.g. {\"NAME\": \"value\"}.",
+  editTerminalClearOption: "(clear / use default)",
+  editTerminalFailed: "Failed to edit the terminal.",
   // Save the terminal session
   selectSessionSaveTitle: "Select a session to override or create a new session:",
   selectSessionSavePlaceHolder: "Select session...",
@@ -179,7 +213,7 @@ export var constants = {
   editEnvironmentVariableFailed: "Failed to edit the environment variable.",
   removeEnvironmentVariableFailed: "Failed to remove the environment variable.",
   removeEnvironmentVariableSuccess: "The environment variable was successfully removed!",
-  environmentVariableNameReserved: 'The name "inherits" is reserved and cannot be used as an environment variable name.',
+  environmentVariableNameReserved: 'The names "inherits" and "mask" are reserved and cannot be used as an environment variable name.',
   // Environment inheritance
   editEnvironmentInheritanceTitle: 'Edit inheritance for "{name}"',
   editEnvironmentInheritancePlaceHolder: "Select environments to inherit from (checked order sets precedence: later checked wins)",
@@ -187,6 +221,9 @@ export var constants = {
   environmentInheritanceCircular: "This would create a circular inheritance chain.",
   editEnvironmentInheritanceSuccess: "The environment's inheritance was successfully updated!",
   editEnvironmentInheritanceFailed: "Failed to edit the environment's inheritance.",
+  // Environment variable masking
+  maskedValuePlaceholder: "••••••••",
+  toggleEnvironmentVariableMaskFailed: "Failed to toggle masking for the environment variable.",
   // The components
   yesButton: "Yes",
   noButton: "No",
@@ -195,4 +232,22 @@ export var constants = {
   openWorkspaceButton: "Open Workspace",
   openFolderButton: "Open Folder",
   viewError: "View Error"
+};
+export var terminalFieldDescriptions = {
+  name: "A human-readable string which will be used to represent the terminal in the UI.",
+  commands: "The list of commands run in the terminal.",
+  cwd: "A path or Uri for the current working directory to be used for the terminal.",
+  color: "The id of the color. The available colors are listed in https://code.visualstudio.com/docs/getstarted/theme-color-reference.",
+  icon: "The id of the icon. The available icons are listed in https://code.visualstudio.com/api/references/icons-in-labels#icon-listing.",
+  env: "Environment variables that will be added to the terminal's process, on top of any active environment.",
+  joinOperator: "The operator used to join this terminal's multiple commands (e.g. \";\", \"&&\", \"||\"). Overrides the global \"joinOperator\" for this terminal only.",
+  shellPath: "A path to a custom shell executable to be used in the terminal.",
+  shellArgs: "Args for the custom shell executable.",
+  message: "A message written directly to the terminal on first launch (not sent to the process). Supports escape sequences for setting text style.",
+  disabled: "When true, this terminal will be disabled and not launched during an active session.",
+  autoExecuteCommands: "Automatically execute the specified commands.",
+  focus: "Focus this terminal on startup.",
+  hideFromUser: "Run the process as normal but keep the terminal hidden from the user until it is explicitly shown.",
+  isTransient: "Opt out of the default terminal persistence on restart/reload (only takes effect when terminal.integrated.enablePersistentSessions is enabled).",
+  strictEnv: "When true, the terminal's environment is exactly \"env\" - nothing is inherited from the window or its configured platform settings."
 };

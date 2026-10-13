@@ -21,7 +21,7 @@ export var addEnvironmentVariableAsync = async (environmentTreeItem) => {
         if (!value) {
           return constants.environmentVariableNameNotEmpty;
         }
-        if (value === "inherits") {
+        if (value === "inherits" || value === "mask") {
           return constants.environmentVariableNameReserved;
         }
         if (Object.prototype.hasOwnProperty.call(environment, value)) {

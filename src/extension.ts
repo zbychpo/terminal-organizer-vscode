@@ -3,6 +3,9 @@ import { abortAllAsync } from './commands/abortAllAsync';
 import { activeAsync } from './commands/activeAsync';
 import { activeBySessionAsync } from './commands/activeBySessionAsync';
 import { activeByTerminalAsync } from './commands/activeByTerminalAsync';
+import { activeMultipleSessionsAsync } from './commands/activeMultipleSessionsAsync';
+import { addSessionAsync } from './commands/addSessionAsync';
+import { addTerminalActivityAsync } from './commands/addTerminalActivityAsync';
 import { addVariableAsync } from './commands/addVariableAsync';
 import { addEnvironmentAsync } from './commands/addEnvironmentAsync';
 import { addEnvironmentVariableAsync } from './commands/addEnvironmentVariableAsync';
@@ -11,11 +14,15 @@ import { editConfigAsync } from './commands/editConfigAsync';
 import { editVariableAsync } from './commands/editVariableAsync';
 import { editEnvironmentVariableAsync } from './commands/editEnvironmentVariableAsync';
 import { editEnvironmentInheritanceAsync } from './commands/editEnvironmentInheritanceAsync';
+import { editTerminalActivityAsync } from './commands/editTerminalActivityAsync';
 import { generateAsync } from './commands/generateAsync';
 import { importAsync } from './commands/importAsync';
 import { importVariablesAsync } from './commands/importVariablesAsync';
 import { killAllAsync } from './commands/killAllAsync';
 import { migrateAsync } from './commands/migrateAsync';
+import { moveSessionActivityAsync } from './commands/moveSessionActivityAsync';
+import { moveTerminalActivityAsync } from './commands/moveTerminalActivityAsync';
+import { moveTerminalGroupActivityAsync } from './commands/moveTerminalGroupActivityAsync';
 import { navigateAsync } from './commands/navigateAsync';
 import { openAsync } from './commands/openAsync';
 import { removeAsync } from './commands/removeAsync';
@@ -29,6 +36,7 @@ import { removeVariableAsync } from './commands/removeVariableAsync';
 import { removeEnvironmentAsync } from './commands/removeEnvironmentAsync';
 import { removeEnvironmentVariableAsync } from './commands/removeEnvironmentVariableAsync';
 import { setActiveEnvironmentAsync } from './commands/setActiveEnvironmentAsync';
+import { toggleEnvironmentVariableMaskAsync } from './commands/toggleEnvironmentVariableMaskAsync';
 import { runTerminalByNameAsync } from './commands/runTerminalByNameAsync';
 import { saveAsync } from './commands/saveAsync';
 import { Configuration } from './configuration/configuration';
@@ -87,15 +95,33 @@ export async function activate(context: vscode.ExtensionContext) {
   vscode.window.registerTreeDataProvider(ACTIVITY_VIEW_ID, treeProvider);
   context.subscriptions.push(
     vscode.commands.registerCommand(extCommands.refresh, async () => treeProvider.refresh()),
+    vscode.commands.registerCommand(extCommands.addSessionActivity, async () => {
+      await addSessionAsync();
+    }),
+    vscode.commands.registerCommand(extCommands.addTerminalActivity, async (treeItem) => {
+      await addTerminalActivityAsync(treeItem);
+    }),
     vscode.commands.registerCommand(extCommands.activeSessionActivity, async (sessionTreeItem) => {
       const { sessionId } = sessionTreeItem;
       await activeBySessionAsync(sessionId, true);
+    }),
+    vscode.commands.registerCommand(extCommands.activeMultipleSessionsActivity, async () => {
+      await activeMultipleSessionsAsync();
     }),
     vscode.commands.registerCommand(extCommands.duplicateSessionActivity, async (sessionTreeItem) => {
       await duplicateSessionActivityAsync(sessionTreeItem);
     }),
     vscode.commands.registerCommand(extCommands.removeSessionActivity, async (sessionTreeItem) => {
       await removeSessionActivityAsync(sessionTreeItem);
+    }),
+    vscode.commands.registerCommand(extCommands.moveSessionUpActivity, async (sessionTreeItem) => {
+      await moveSessionActivityAsync(sessionTreeItem, -1);
+    }),
+    vscode.commands.registerCommand(extCommands.moveSessionDownActivity, async (sessionTreeItem) => {
+      await moveSessionActivityAsync(sessionTreeItem, 1);
+    }),
+    vscode.commands.registerCommand(extCommands.editTerminalActivity, async (terminalTreeItem) => {
+      await editTerminalActivityAsync(terminalTreeItem);
     }),
     vscode.commands.registerCommand(extCommands.duplicateTerminalActivity, async (terminalTreeItem) => {
       await duplicateTerminalActivityAsync(terminalTreeItem);
@@ -105,6 +131,18 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand(extCommands.removeTerminalGroupActivity, async (terminalArrayTreeItem) => {
       await removeTerminalGroupActivityAsync(terminalArrayTreeItem);
+    }),
+    vscode.commands.registerCommand(extCommands.moveTerminalUpActivity, async (terminalTreeItem) => {
+      await moveTerminalActivityAsync(terminalTreeItem, -1);
+    }),
+    vscode.commands.registerCommand(extCommands.moveTerminalDownActivity, async (terminalTreeItem) => {
+      await moveTerminalActivityAsync(terminalTreeItem, 1);
+    }),
+    vscode.commands.registerCommand(extCommands.moveTerminalGroupUpActivity, async (terminalArrayTreeItem) => {
+      await moveTerminalGroupActivityAsync(terminalArrayTreeItem, -1);
+    }),
+    vscode.commands.registerCommand(extCommands.moveTerminalGroupDownActivity, async (terminalArrayTreeItem) => {
+      await moveTerminalGroupActivityAsync(terminalArrayTreeItem, 1);
     }),
     vscode.commands.registerCommand(extCommands.collapseAllActivity, async () => {
       await vscode.commands.executeCommand(sysCommands.activityCollapseAll);
@@ -160,6 +198,9 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(extCommands.importFromGulpActivity, async () => {
       await importAsync("gulp");
     }),
+    vscode.commands.registerCommand(extCommands.importFromTasksActivity, async () => {
+      await importAsync("tasks");
+    }),
     vscode.commands.registerCommand(extCommands.editConfigActivity, async (configTreeItem) => {
       await editConfigAsync(configTreeItem);
     }),
@@ -198,6 +239,9 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand(extCommands.editEnvironmentInheritanceActivity, async (environmentTreeItem) => {
       await editEnvironmentInheritanceAsync(environmentTreeItem);
+    }),
+    vscode.commands.registerCommand(extCommands.toggleEnvironmentVariableMaskActivity, async (environmentVariableTreeItem) => {
+      await toggleEnvironmentVariableMaskAsync(environmentVariableTreeItem);
     })
   );
   Configuration.watch(() => treeProvider.refresh());

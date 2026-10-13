@@ -5,7 +5,13 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { substituteVariable, substituteVariablesDeep } from '../../utils/variable-substitution';
 import { resolveVscodeVariable, resolveVscodeVariablesDeep } from '../../utils/vscode-variable-resolver';
-import { applyEnvironmentToTerminals, resolveEnvironmentVariables, hasCircularInheritance } from '../../utils/environment-merge';
+import { applyEnvironmentToTerminals, resolveEnvironmentVariables, hasCircularInheritance, resolveMaskedVariableNames } from '../../utils/environment-merge';
+import { swapAdjacent } from '../../utils/reorder';
+import { mergeImportedTerminals } from '../../commands/importAsync';
+import { buildCommands as buildTasksCommands } from '../../commands/modules/tasksParse';
+import { applyTerminalFieldUpdate, describeField, validateJsonStringArray, validateJsonStringRecord } from '../../commands/editTerminalActivityAsync';
+import { toggleMask } from '../../commands/toggleEnvironmentVariableMaskAsync';
+import { configurationTemplate } from '../../configuration/template';
 
 const EXTENSION_ID = 'zbigniewpowroznik.terminal-organizer-vscode';
 const LATEST_SCHEMA_URI = 'terminal-organizer-vscode-schema:/v11/terminal-organizer-vscode.json';
@@ -457,5 +463,187 @@ suite('Terminal Organizer Extension Test Suite', () => {
             false,
             'a diamond (top -> a,b -> base) is not a cycle even though "base" is reached twice'
         );
+    });
+
+    test('resolveMaskedVariableNames returns an environment\'s own "mask" list and unions it with masks inherited through "inherits"', () => {
+        const environments = {
+            base: { API_KEY: 'secret', mask: ['API_KEY'] },
+            java17: { inherits: ['base'], JAVA_HOME: 'C:\\java17', TOKEN: 'secret2', mask: ['TOKEN'] }
+        };
+
+        const resolved = resolveMaskedVariableNames(environments, 'java17');
+
+        assert.strictEqual(resolved.has('API_KEY'), true, 'mask inherited from "base" should still apply');
+        assert.strictEqual(resolved.has('TOKEN'), true, 'the environment\'s own "mask" entry should apply');
+        assert.strictEqual(resolved.has('JAVA_HOME'), false);
+    });
+
+    test('resolveMaskedVariableNames is cycle-safe and returns an empty set for a missing environment', () => {
+        const environments = {
+            a: { inherits: ['b'], mask: ['A'] },
+            b: { inherits: ['a'], mask: ['B'] }
+        };
+
+        const resolved = resolveMaskedVariableNames(environments, 'a');
+        assert.strictEqual(resolved.has('A'), true);
+        assert.strictEqual(resolved.has('B'), true);
+        assert.deepStrictEqual(resolveMaskedVariableNames(environments, 'doesNotExist'), new Set());
+        assert.deepStrictEqual(resolveMaskedVariableNames(undefined, 'a'), new Set());
+    });
+
+    test('swapAdjacent swaps an item with its previous/next neighbor and reports whether anything changed', () => {
+        const upward = ['a', 'b', 'c'];
+        assert.strictEqual(swapAdjacent(upward, 1, -1), true);
+        assert.deepStrictEqual(upward, ['b', 'a', 'c']);
+
+        const downward = ['a', 'b', 'c'];
+        assert.strictEqual(swapAdjacent(downward, 1, 1), true);
+        assert.deepStrictEqual(downward, ['a', 'c', 'b']);
+    });
+
+    test('swapAdjacent is a no-op at the boundaries of the array', () => {
+        const atStart = ['a', 'b', 'c'];
+        assert.strictEqual(swapAdjacent(atStart, 0, -1), false);
+        assert.deepStrictEqual(atStart, ['a', 'b', 'c']);
+
+        const atEnd = ['a', 'b', 'c'];
+        assert.strictEqual(swapAdjacent(atEnd, 2, 1), false);
+        assert.deepStrictEqual(atEnd, ['a', 'b', 'c']);
+
+        assert.strictEqual(swapAdjacent(['solo'], 0, -1), false);
+        assert.strictEqual(swapAdjacent(undefined, 0, -1), false);
+    });
+
+    test('mergeImportedTerminals replaces an existing standalone terminal by name and appends genuinely new ones', () => {
+        const previousItems = [
+            { name: 'build', commands: ['old build command'] },
+            { name: 'test', commands: ['old test command'] }
+        ];
+        const importedItems = [
+            { name: 'build', commands: ['new build command'], cwd: '/repo' },
+            { name: 'lint', commands: ['npm run lint'] }
+        ];
+
+        const merged = mergeImportedTerminals(previousItems, importedItems);
+
+        assert.deepStrictEqual(merged, [
+            { name: 'build', commands: ['new build command'], cwd: '/repo' },
+            { name: 'test', commands: ['old test command'] },
+            { name: 'lint', commands: ['npm run lint'] }
+        ]);
+    });
+
+    test('mergeImportedTerminals replaces a terminal inside a split-terminal group in place, keeping it in the group', () => {
+        const previousItems = [
+            [
+                { name: 'server', commands: ['old server command'] },
+                { name: 'client', commands: ['old client command'] }
+            ]
+        ];
+        const importedItems = [{ name: 'server', commands: ['new server command'] }];
+
+        const merged = mergeImportedTerminals(previousItems, importedItems);
+
+        assert.deepStrictEqual(merged, [
+            [
+                { name: 'server', commands: ['new server command'] },
+                { name: 'client', commands: ['old client command'] }
+            ]
+        ]);
+    });
+
+    test('buildCommands (tasks.json) extracts shell tasks, tolerates comments, and synthesizes "npm run <script>" for npm-type tasks', () => {
+        const contents = `{
+            // a comment that should be ignored
+            "version": "2.0.0",
+            "tasks": [
+                { "label": "build", "type": "shell", "command": "echo", "args": ["building"] },
+                { "label": "build-script", "type": "npm", "script": "build" },
+                { "type": "shell", "command": "echo no-label" }
+            ],
+        }`;
+
+        const scripts = buildTasksCommands(contents);
+
+        assert.deepStrictEqual(scripts, {
+            build: ['echo building'],
+            'build-script': ['npm run build']
+        });
+    });
+
+    test('applyTerminalFieldUpdate sets a field, and clears it (deletes the key) when given an empty/undefined value', () => {
+        const terminal = { name: 'build', commands: ['npm run build'], color: 'terminal.ansiGreen' };
+
+        const withNewColor = applyTerminalFieldUpdate(terminal, 'color', 'terminal.ansiRed');
+        assert.strictEqual(withNewColor.color, 'terminal.ansiRed');
+        assert.strictEqual(terminal.color, 'terminal.ansiGreen', 'the original terminal object must not be mutated');
+
+        const withClearedColor = applyTerminalFieldUpdate(terminal, 'color', undefined);
+        assert.strictEqual('color' in withClearedColor, false);
+
+        const withClearedIcon = applyTerminalFieldUpdate(terminal, 'icon', '');
+        assert.strictEqual('icon' in withClearedIcon, false);
+    });
+
+    test('describeField renders a human-readable preview for each terminal field type', () => {
+        const terminal = {
+            name: 'build',
+            commands: ['npm install', 'npm run build'],
+            disabled: true,
+            autoExecuteCommands: false,
+            env: { NODE_ENV: 'production' },
+            color: 'terminal.ansiGreen'
+        };
+
+        assert.strictEqual(describeField(terminal, 'commands'), 'npm install | npm run build');
+        assert.strictEqual(describeField(terminal, 'shellArgs'), '(none)', 'an unset array field falls back to "(none)"');
+        assert.strictEqual(describeField(terminal, 'disabled'), 'Yes');
+        assert.strictEqual(describeField(terminal, 'autoExecuteCommands'), 'No');
+        assert.strictEqual(describeField(terminal, 'env'), '{"NODE_ENV":"production"}');
+        assert.strictEqual(describeField(terminal, 'icon'), '(theme default)', 'an unset color/icon falls back to "(theme default)"');
+        assert.strictEqual(describeField(terminal, 'cwd'), '(not set)', 'any other unset field falls back to "(not set)"');
+    });
+
+    test('validateJsonStringArray accepts a JSON array of strings and rejects anything else', () => {
+        assert.strictEqual(validateJsonStringArray('["a", "b"]'), '');
+        assert.strictEqual(validateJsonStringArray('[]'), '');
+        assert.notStrictEqual(validateJsonStringArray('not json'), '');
+        assert.notStrictEqual(validateJsonStringArray('{"a": "b"}'), '', 'an object is not an array');
+        assert.notStrictEqual(validateJsonStringArray('[1, 2]'), '', 'array items must be strings');
+    });
+
+    test('validateJsonStringRecord accepts a JSON object of string values and rejects anything else', () => {
+        assert.strictEqual(validateJsonStringRecord('{"NAME": "value"}'), '');
+        assert.strictEqual(validateJsonStringRecord('{}'), '');
+        assert.notStrictEqual(validateJsonStringRecord('not json'), '');
+        assert.notStrictEqual(validateJsonStringRecord('["a", "b"]'), '', 'an array is not an object');
+        assert.notStrictEqual(validateJsonStringRecord('{"NAME": 1}'), '', 'object values must be strings');
+        assert.notStrictEqual(validateJsonStringRecord('null'), '', 'null is not an object');
+    });
+
+    test('toggleMask adds a variable name to the mask list, and removes it again on a second toggle', () => {
+        const afterFirstToggle = toggleMask(undefined, 'API_KEY');
+        assert.deepStrictEqual(afterFirstToggle, ['API_KEY']);
+
+        const afterSecondToggle = toggleMask(afterFirstToggle, 'API_KEY');
+        assert.deepStrictEqual(afterSecondToggle, []);
+
+        assert.deepStrictEqual(toggleMask(['API_KEY'], 'TOKEN'), ['API_KEY', 'TOKEN']);
+    });
+
+    test('Bundled schema defines "mask" on environmentItem', async () => {
+        const ext = vscode.extensions.getExtension(EXTENSION_ID);
+        assert.ok(ext);
+        await ext!.activate();
+
+        const schemaUri = vscode.Uri.parse(LATEST_SCHEMA_URI);
+        const doc = await vscode.workspace.openTextDocument(schemaUri);
+        const schema = JSON.parse(doc.getText());
+
+        assert.ok(schema.definitions?.environmentItem?.properties?.mask, 'definitions.environmentItem is missing the "mask" property');
+    });
+
+    test('The generated configuration template starts with a single empty "default" session', () => {
+        assert.deepStrictEqual(configurationTemplate.sessions, { default: [] });
     });
 });

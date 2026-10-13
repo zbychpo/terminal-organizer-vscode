@@ -28,6 +28,24 @@ export var resolveEnvironmentVariables = (environments, name, ancestors = []) =>
   return { ...merged, ...ownVariables };
 };
 
+export var resolveMaskedVariableNames = (environments, name, ancestors = []) => {
+  if (!name || !environments || !Object.prototype.hasOwnProperty.call(environments, name)) {
+    return new Set();
+  }
+  if (ancestors.includes(name)) {
+    return new Set();
+  }
+  const environment = environments[name] || {};
+  const inherits = Array.isArray(environment.inherits) ? environment.inherits : [];
+  const ownMask = Array.isArray(environment.mask) ? environment.mask : [];
+  const nextAncestors = [...ancestors, name];
+  const masked = new Set(ownMask);
+  inherits.forEach((parentName) => {
+    resolveMaskedVariableNames(environments, parentName, nextAncestors).forEach((variableName) => masked.add(variableName));
+  });
+  return masked;
+};
+
 export var applyEnvironmentToTerminals = (input, environmentVariables) => {
   if (!environmentVariables || Object.keys(environmentVariables).length <= 0) {
     return input;

@@ -109,10 +109,19 @@
             "type": "string",
             "description": "The name of an environment to inherit from."
           }
+        },
+        "mask": {
+          "type": "array",
+          "default": [],
+          "description": "Names of this environment's own variables whose value should be masked (shown as a fixed placeholder) in the Activity Bar's Explorer tree and tooltips. Purely a display concern - the real value is still used when a terminal is launched. Masking also applies to any environment that inherits this one.",
+          "items": {
+            "type": "string",
+            "description": "The name of a variable (declared on this same environment) to mask."
+          }
         }
       },
       "patternProperties": {
-        "^(?!inherits$).*$": {
+        "^(?!inherits$)(?!mask$).*$": {
           "type": "string"
         }
       }

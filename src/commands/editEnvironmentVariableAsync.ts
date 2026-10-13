@@ -6,7 +6,7 @@ import { showErrorMessageWithDetail } from '../utils/utils';
 export var editEnvironmentVariableAsync = async (environmentVariableTreeItem) => {
   try {
     const { environmentName, variableName } = environmentVariableTreeItem || {};
-    if (!environmentName || !variableName || variableName === "inherits") {
+    if (!environmentName || !variableName || variableName === "inherits" || variableName === "mask") {
       return;
     }
     const currentContent = await Configuration.getSessionConfiguration();

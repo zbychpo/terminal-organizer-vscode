@@ -1,3 +1,16 @@
+## 1.0.16
+
+Added a batch of Activity Bar and configuration improvements:
+
+- **Edit Terminal**: a new inline **Edit Terminal** ($(edit)) button on a terminal lets you change any of its fields - `name`, `commands`, `cwd`, `color`, `icon`, `env`, `joinOperator`, `shellPath`, `shellArgs`, `message`, `disabled`, `autoExecuteCommands`, `focus`, `hideFromUser`, `isTransient`, `strictEnv` - without opening `sessions.json` by hand. The field picker shows a one-line description of what each field does, so there's no need to look it up; `icon` is a searchable picker listing every built-in icon with its actual glyph instead of free text.
+- **Add Session**: a new inline **Add Session** ($(add)) button on the **Sessions** group prompts for a name and creates an empty session, mirroring the existing **Add Variable**/**Add Environment** buttons.
+- **Add Terminal**: a new inline **Add Terminal** ($(add)) button on a session appends a new standalone terminal to it, and the same button on a split-terminal group appends a new terminal to that group; both prompt for a name validated against every terminal name already used in any session.
+- **Reordering**: sessions, split-terminal groups, and individual terminals (standalone or inside a group) all have inline **Move Up**/**Move Down** buttons to reorder them.
+- **Masking environment variable values**: an environment can set `mask` to a list of its own variable names whose value should be shown as `••••••••` instead of in the clear across the Activity Bar (its own row, tooltips, and any terminal's resolved `env` tooltip) - masking also propagates to anything that inherits the variable through `inherits`. The real value is still used when a terminal launches; a new inline **toggle mask** ($(eye)) button on an environment variable flips it.
+- **Activate Multiple Sessions**: a new command (and Activity Bar title-bar button, next to **Active Session**) lets you check off several sessions and activates them one after another without killing the terminals from the ones activated just before.
+- **Import from VS Code tasks**: `.vscode/tasks.json` is now a supported import source alongside npm, composer, Make, Gradle, Pipenv, Ant, Grunt, and Gulp.
+- **Simpler starter configuration**: "Generate Configuration" now creates a single empty `default` session instead of a filled-in demo session, so there's nothing to delete before you start adding your own terminals.
+
 ## 1.0.15
 
 Fixed **Import** (from `Makefile`, `package.json`, `composer.json`, Gradle, Pipenv, Ant, Grunt, and Gulp) so re-importing into a session no longer duplicates terminals: a target/script whose name already exists in that session now has its command/cwd replaced in place (keeping it in its split-terminal group if it was in one), while a genuinely new name is still appended as before.

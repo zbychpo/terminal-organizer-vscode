@@ -116,19 +116,19 @@ Prefer a different look every time? Switch to the **Dice** theme for randomly ge
 
 ### Activity Bar integration ✨
 
-Manage all your terminal sessions from a dedicated Activity Bar view. Create, edit, activate, duplicate, import, or remove sessions without leaving the explorer.
+Manage all your terminal sessions from a dedicated Activity Bar view. Create, edit, activate, duplicate, reorder, import, or remove sessions and terminals without leaving the explorer.
 
 ![Terminal Organizer Activity Bar](img/terminal-organizer-vscode-activity.gif)
 
 ### Import sessions from project files ✨
 
-Skip the manual setup by importing commands directly from common project files such as `package.json`, `composer.json`, `Makefile`, `Pipfile`, Gradle, Ant, Grunt, and Gulp.
+Skip the manual setup by importing commands directly from common project files such as `package.json`, `composer.json`, `Makefile`, `Pipfile`, Gradle, Ant, Grunt, Gulp, and VS Code's own `.vscode/tasks.json`. Re-importing into the same session updates any terminal whose name already matches instead of duplicating it.
 
 ![Terminal Organizer Import](img/terminal-organizer-vscode-import.gif)
 
 ### Generate configuration
 
-Generate a ready-to-use configuration file for the current workspace. Start with sensible defaults and customize sessions as your project grows.
+Generate a ready-to-use configuration file for the current workspace, starting with a single empty `default` session so you can build it up from scratch - add terminals through the Activity Bar or by importing commands from a project file.
 
 ![Generate configuration templates](img/generate-configuration.gif)
 
@@ -149,6 +149,8 @@ Keep terminals easy to distinguish with automatically generated colors and icons
 Quickly switch between multiple saved sessions using the Command Palette. Perfect for projects with different development, testing, or deployment workflows.
 
 ![Choose a session to activate](img/active-session.gif)
+
+Need more than one session running together? **Activate Multiple Sessions** (also available from the Activity Bar's title bar, next to **Active Session**) lets you check off several sessions at once and activates them one after another without killing the terminals from the sessions activated just before it.
 
 ### Launch sessions in any workspace directory
 
@@ -258,6 +260,8 @@ Terminal Organizer stores sessions in a configuration object. Each session conta
         name: {
             // Optional: names of other environments to inherit variables from, least to most important.
             inherits?: Array<string>,
+            // Optional: names of this environment's own variables to mask in the Activity Bar.
+            mask?: Array<string>,
             NAME: string
         }
     }
@@ -319,6 +323,8 @@ focus?: boolean,
 // ✨ When true, this terminal will be disabled and not launched during an active session. Useful for temporarily turning off terminals without removing them.
 disabled?: boolean
 ```
+
+Every field above can be edited without touching `sessions.json` by hand: use the inline **Edit Terminal** ($(edit)) button on a terminal in the Activity Bar's **Sessions** tree. The field picker shows each field's current value plus a one-line description of what it does (what this README's comments describe), so you don't need to come back here to remember what e.g. `strictEnv` or `isTransient` means. Each field then gets the control that fits it: Yes/No for the boolean fields (`disabled`, `autoExecuteCommands`, `focus`, `hideFromUser`, `isTransient`, `strictEnv`), a color picker for `color`, a searchable picker (showing every option's actual glyph) for `icon`, a folder/file-aware input for `cwd`/`shellPath`, and a JSON input for `commands`/`shellArgs` (an array, e.g. `["npm install", "npm run build"]`) and `env` (an object, e.g. `{"NODE_ENV": "production"}`); the remaining fields (`name`, `joinOperator`, `message`) use a plain text input. Leaving an optional field's prompt empty clears it back to its default. Sessions also have an inline **Add Session** ($(add)) button on the **Sessions** group (prompts for a name and creates it empty) and an inline **Add Terminal** ($(add)) button on each session (appends a new standalone terminal) and each split-terminal group (appends a new terminal to that group); both prompt for a name validated against every terminal name already used in any session. Sessions, split-terminal groups, and individual terminals (standalone or inside a group) all have inline **Move Up**/**Move Down** buttons to reorder them.
 
 ### Specify terminal icon and color
 
@@ -434,7 +440,7 @@ A terminal can still define its own `env` - only the keys it **doesn't** already
 
 With the `java17` environment above active, this terminal ends up with `JAVA_HOME=C:\Program Files\Java\jdk1.8.0` (its own value), plus `MAVEN_HOME` and `PATH` filled in from `java17`, plus `ILE_ELEMENTO=10`.
 
-Manage environments from the Activity Bar's **Environments** section: the **+** button on the group adds one, and each environment has inline actions to set it as **active** (✓), **duplicate** it, **edit** its inheritance ($(type-hierarchy)), **add** a variable to it, or **remove** it entirely; each variable inside an environment has inline **edit**/**remove** actions. The Sessions tree's per-terminal tooltip shows the resulting merged `env` - i.e. exactly what will be passed to the terminal once the active environment and any variables are resolved.
+Manage environments from the Activity Bar's **Environments** section: the **+** button on the group adds one, and each environment has inline actions to set it as **active** (✓), **duplicate** it, **edit** its inheritance ($(type-hierarchy)), **add** a variable to it, or **remove** it entirely; each variable inside an environment has inline **toggle mask** ($(eye)), **edit**, and **remove** actions. The Sessions tree's per-terminal tooltip shows the resulting merged `env` - i.e. exactly what will be passed to the terminal once the active environment and any variables are resolved.
 
 #### Environment inheritance ✨
 
@@ -467,6 +473,24 @@ An environment can inherit variables from one or more other environments via `in
 Here `java17-verbose` ends up with `JAVA_HOME`/`PATH` from `java17` (which itself pulled `PATH` from `base`), `LOG_LEVEL=info` from `logging`, then its own `LOG_LEVEL=debug` overrides that last. A circular chain (e.g. two environments inheriting from each other) is rejected when you edit the inheritance list.
 
 Use the inline **Edit Inheritance** ($(type-hierarchy)) button on an environment to check the other environments it should inherit from - the picker lists every other environment (the current one is never offered), pre-checked with its current `inherits`, with already-inherited environments kept first in their existing precedence order followed by the rest; a selection that would create a circular chain is rejected.
+
+#### Masking environment variable values ✨
+
+If an environment holds a secret (an API key, a token, a password), set `mask` to the list of that environment's own variable names whose value shouldn't be shown in the Activity Bar:
+
+```jsonc
+{
+    "environments": {
+        "prod": {
+            "mask": ["API_KEY"],
+            "API_KEY": "sk-live-...",
+            "API_BASE_URL": "https://api.example.com"
+        }
+    }
+}
+```
+
+`API_KEY` then shows as `••••••••` in the environment's own tree row, its tooltip, and the resolved `env` shown in every terminal tooltip that merges this environment in (directly or through `inherits` - masking a variable on a base environment also masks it for anything that inherits from it). This is purely a display concern: the real value is still substituted and used when a terminal actually launches. Toggle it from the inline **toggle mask** ($(eye)) button on an environment variable - the button's own icon switches between $(symbol-variable) and $(eye-closed) to show the current state.
 
 ### Keybinding support
 

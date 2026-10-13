@@ -9,7 +9,7 @@ import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
 import { applyEnvironmentToTerminals, resolveEnvironmentVariables } from '../utils/environment-merge';
 import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
 
-export var activeBySessionAsync = async (activeSession, isSaveActiveSession = false) => {
+export var activeBySessionAsync = async (activeSession, isSaveActiveSession = false, forceKeepExistingTerminals = false) => {
   try {
     const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
     if (!isDefinedSessionFile) {
@@ -63,7 +63,7 @@ export var activeBySessionAsync = async (activeSession, isSaveActiveSession = fa
         cancellable: false
       },
       async (progress) => {
-        if (!keepExistingTerminals) {
+        if (!keepExistingTerminals && !forceKeepExistingTerminals) {
           progress.report({ message: "Killing previous terminals..." });
           await killAllTerminal();
         }

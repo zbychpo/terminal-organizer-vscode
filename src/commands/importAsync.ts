@@ -8,6 +8,7 @@ import { extractGulpCommands } from './modules/gulpParse';
 import { extractJsonScriptCommands } from './modules/jsonScriptParse';
 import { extractMakeCommands } from './modules/makeParse';
 import { extractPipenvCommands } from './modules/pipenvParse';
+import { extractTasksCommands } from './modules/tasksParse';
 import { Configuration } from '../configuration/configuration';
 import { configurationTemplate } from '../configuration/template';
 import { constants } from '../utils/constants';
@@ -33,6 +34,8 @@ var getGlobFiles = (fileType) => {
       return [
         "**/[Gg][Uu][Ll][Pp][Ff][Ii][Ll][Ee].{[Jj][Ss],[Tt][Ss],[Mm][Jj][Ss],[Bb][Aa][Bb][Ee][Ll].[Jj][Ss]}"
       ];
+    case "tasks":
+      return ["**/.vscode/tasks.json"];
     default:
       return undefined;
   }
@@ -55,6 +58,8 @@ var getCommands = async (fileType, filePath) => {
       return extractGruntCommands(filePath);
     case "gulp":
       return extractGulpCommands(filePath);
+    case "tasks":
+      return extractTasksCommands(filePath);
     default:
       return undefined;
   }
@@ -94,7 +99,7 @@ var chooseFilePath = async (filePaths) => {
   }
   return selectedFilePath;
 };
-var mergeImportedTerminals = (previousItems, importedItems) => {
+export var mergeImportedTerminals = (previousItems, importedItems) => {
   const importedByName = new Map(importedItems.map((item) => [item.name, item]));
   const consumedNames = new Set();
   const merged = previousItems.map((sessionItem) => {

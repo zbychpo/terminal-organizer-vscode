@@ -4,6 +4,9 @@ export interface EnvironmentItem {
   // Names of other environments to merge in before this environment's own variables,
   // listed from least to most important - a later entry overrides an earlier one.
   inherits?: string[];
+  // Names of this environment's own variables whose value should be masked
+  // (shown as a fixed placeholder) in the Explorer tree and tooltips.
+  mask?: string[];
   [variableName: string]: string | string[] | undefined;
 }
 

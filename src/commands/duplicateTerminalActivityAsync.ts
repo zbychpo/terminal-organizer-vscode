@@ -1,21 +1,7 @@
 import * as vscode from 'vscode';
 import { Configuration } from '../configuration/configuration';
 import { constants } from '../utils/constants';
-import { showErrorMessageWithDetail } from '../utils/utils';
-
-const collectAllTerminalNames = (sessions) => {
-  const names = new Set<string>();
-  Object.values(sessions || {}).forEach((session: any[]) => {
-    session.forEach((sessionItem) => {
-      if (Array.isArray(sessionItem)) {
-        sessionItem.forEach((terminal) => names.add(terminal.name));
-      } else {
-        names.add(sessionItem.name);
-      }
-    });
-  });
-  return names;
-};
+import { collectAllTerminalNames, showErrorMessageWithDetail } from '../utils/utils';
 
 export var duplicateTerminalActivityAsync = async (terminalTreeItem) => {
   try {
