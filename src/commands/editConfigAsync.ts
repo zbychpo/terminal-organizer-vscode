@@ -45,8 +45,12 @@ export var editConfigAsync = async (configTreeItem) => {
     if (!label) {
       return;
     }
-    const config = await Configuration.load();
-    const currentValue = config[label] ?? Configuration.getExperimentalConfig(label);
+    const configuration = await Configuration.resolve(configTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const config = await configuration.load();
+    const currentValue = config[label] ?? configuration.getExperimentalConfig(label);
     const title = constants.editConfigTitle.replace("{key}", label);
     let newValue;
     if (booleanConfigKeys.includes(label)) {
@@ -104,7 +108,15 @@ export var editConfigAsync = async (configTreeItem) => {
       }
       newValue = input;
     }
-    await Configuration.save({ [label]: newValue });
+    // save() only patches keys already in the file - a key left out of a
+    // folder's sessions.json (e.g. to inherit it from the workspace-level one)
+    // is added explicitly instead.
+    const rawContent = await configuration.getSessionConfiguration();
+    if (!configuration.isUserConfigKey(label) && !Object.prototype.hasOwnProperty.call(rawContent, label)) {
+      await configuration.writeSessionFile({ ...rawContent, [label]: newValue });
+      return;
+    }
+    await configuration.save({ [label]: newValue });
   } catch (error) {
     showErrorMessageWithDetail(constants.editConfigFailed, error);
   }

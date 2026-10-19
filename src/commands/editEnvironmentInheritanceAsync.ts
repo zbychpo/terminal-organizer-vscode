@@ -10,7 +10,11 @@ export var editEnvironmentInheritanceAsync = async (environmentTreeItem) => {
     if (!environmentName) {
       return;
     }
-    const currentContent = await Configuration.getSessionConfiguration();
+    const configuration = await Configuration.resolve(environmentTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const currentContent = await configuration.getSessionConfiguration();
     const environments = currentContent.environments || {};
     if (!Object.prototype.hasOwnProperty.call(environments, environmentName)) {
       return;
@@ -49,7 +53,7 @@ export var editEnvironmentInheritanceAsync = async (environmentTreeItem) => {
     }
     const { inherits: _oldInherits, ...ownVariables } = environment;
     const updatedEnvironment = names.length > 0 ? { inherits: names, ...ownVariables } : ownVariables;
-    await Configuration.writeSessionFile({
+    await configuration.writeSessionFile({
       ...currentContent,
       environments: { ...environments, [environmentName]: updatedEnvironment }
     });

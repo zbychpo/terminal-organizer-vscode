@@ -9,7 +9,11 @@ export var duplicateTerminalActivityAsync = async (terminalTreeItem) => {
     if (!sessionId || terminalArrayIndex === undefined) {
       return;
     }
-    const config = await Configuration.load();
+    const configuration = await Configuration.resolve(terminalTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const config = await configuration.load();
     if (!config?.sessions) {
       return;
     }
@@ -57,7 +61,7 @@ export var duplicateTerminalActivityAsync = async (terminalTreeItem) => {
     } else {
       session.splice(terminalArrayIndex + 1, 0, duplicatedTerminal);
     }
-    await Configuration.save({ sessions });
+    await configuration.save({ sessions });
     vscode.window.showInformationMessage(constants.duplicateTerminalSuccess);
   } catch (error) {
     showErrorMessageWithDetail(constants.duplicateTerminalFailed, error);

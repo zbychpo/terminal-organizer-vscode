@@ -4,14 +4,18 @@ import { Configuration } from '../configuration/configuration';
 import { constants } from '../utils/constants';
 import { showErrorMessageWithDetail, getSessionQuickPickItems, showGenerateConfiguration } from '../utils/utils';
 
-export var activeMultipleSessionsAsync = async () => {
+export var activeMultipleSessionsAsync = async (target?) => {
   try {
-    const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
-    if (!isDefinedSessionFile) {
-      await showGenerateConfiguration();
+    const configuration = await Configuration.resolve(target);
+    if (!configuration) {
       return;
     }
-    const config = await Configuration.load();
+    const isDefinedSessionFile = await configuration.isDefinedSessionFile();
+    if (!isDefinedSessionFile) {
+      await showGenerateConfiguration(configuration);
+      return;
+    }
+    const config = await configuration.load();
     if (!config?.sessions) {
       vscode.window.showWarningMessage(constants.notExistAnySessions);
       return;
@@ -26,7 +30,7 @@ export var activeMultipleSessionsAsync = async () => {
       return;
     }
     for (let i = 0; i < picked.length; i++) {
-      await activeBySessionAsync(picked[i].label, false, i > 0);
+      await activeBySessionAsync(configuration, picked[i].label, false, i > 0);
     }
   } catch (error) {
     showErrorMessageWithDetail(constants.activeSessionFailed, error);

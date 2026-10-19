@@ -97,7 +97,8 @@
             {
                 "command": "terminal-organizer-vscode.generate",
                 "category": "Terminal Organizer",
-                "title": "Generate Configuration"
+                "title": "Generate Configuration",
+                "icon": "$(new-file)"
             },
             {
                 "command": "terminal-organizer-vscode.clear-all",
@@ -359,6 +360,12 @@
                 "command": "terminal-organizer-vscode.toggle-environment-variable-mask-activity",
                 "title": "Toggle Mask",
                 "icon": "$(eye)"
+            },
+            {
+                "command": "terminal-organizer-vscode.change-multi-root-mode-activity",
+                "category": "Terminal Organizer",
+                "title": "Change Multi-root Mode",
+                "icon": "$(settings-edit)"
             }
         ],
         "menus": {
@@ -474,6 +481,26 @@
                 }
             ],
             "view/item/context": [
+                {
+                    "command": "terminal-organizer-vscode.change-multi-root-mode-activity",
+                    "when": "viewItem == multi-root-mode-context",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "terminal-organizer-vscode.active",
+                    "when": "viewItem == scope-context",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "terminal-organizer-vscode.open",
+                    "when": "viewItem == scope-context",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "terminal-organizer-vscode.generate",
+                    "when": "viewItem == scope-empty-context",
+                    "group": "inline@1"
+                },
                 {
                     "command": "terminal-organizer-vscode.add-session-activity",
                     "when": "viewItem == sessions-group-context",
@@ -611,7 +638,7 @@
                 },
                 {
                     "command": "terminal-organizer-vscode.set-active-environment-activity",
-                    "when": "viewItem == environment-context",
+                    "when": "viewItem == environment-context || viewItem == environment-inherited-context",
                     "group": "inline@1"
                 },
                 {
@@ -667,31 +694,37 @@
             "title": "Terminal Organizer",
             "properties": {
                 "terminal-organizer-vscode.activateOnStartup": {
+                    "scope": "resource",
                     "type": "boolean",
                     "default": null,
                     "description": "Activated the session when Visual Studio Code starts up."
                 },
                 "terminal-organizer-vscode.active": {
+                    "scope": "resource",
                     "type": "string",
                     "default": null,
                     "description": "Used to determine which session to use."
                 },
                 "terminal-organizer-vscode.keepExistingTerminals": {
+                    "scope": "resource",
                     "type": "boolean",
                     "default": null,
                     "description": "Keep existing terminals open when a session is executed."
                 },
                 "terminal-organizer-vscode.noClear": {
+                    "scope": "resource",
                     "type": "boolean",
                     "default": null,
                     "description": "A Boolean variable indicating whether to execute the clear command during initialization. If the value is true, the clear command will not be executed upon initialization. If the value is false, the clear command will be executed."
                 },
                 "terminal-organizer-vscode.joinOperator": {
+                    "scope": "resource",
                     "type": "string",
                     "default": null,
                     "description": "The default operator used to join a terminal's multiple commands (e.g. \";\", \"&&\", \"||\") when the terminal doesn't specify its own \"joinOperator\". A terminal's own \"joinOperator\" always overrides this global value. If neither is set, it defaults to \"&\" on Windows and \";\" elsewhere."
                 },
                 "terminal-organizer-vscode.openNodeOnStart": {
+                    "scope": "resource",
                     "type": "array",
                     "default": null,
                     "items": {
@@ -700,6 +733,7 @@
                     "description": "List of node names (e.g. \"Sessions\", \"Variables\", \"Environments\", a session name, an environment name, or a split-terminal group name) that will be expanded by default in the Activity Bar explorer view."
                 },
                 "terminal-organizer-vscode.theme": {
+                    "scope": "resource",
                     "type": "string",
                     "default": null,
                     "enum": [
@@ -742,6 +776,30 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Hide the terminal commands in the explorer tree item descriptions."
+                },
+                "terminal-organizer-vscode.sessionFileLocations": {
+                    "type": "array",
+                    "default": [
+                        ".vscode/sessions.json",
+                        "sessions.json"
+                    ],
+                    "items": {
+                        "type": "string"
+                    },
+                    "markdownDescription": "Where to look for the sessions file in each workspace folder (and next to a multi-root workspace's `.code-workspace` file), relative to that folder. The first existing file wins; a new file is created at the first location."
+                },
+                "terminal-organizer-vscode.multiRootMode": {
+                    "type": "string",
+                    "default": "separate",
+                    "enum": [
+                        "separate",
+                        "inherit"
+                    ],
+                    "enumDescriptions": [
+                        "Each workspace folder uses only its own sessions file.",
+                        "Each workspace folder inherits `variable`, `environments` and unset options (`theme`, `keepExistingTerminals`, `noClear`, `joinOperator`, `activeEnvironment`) from the workspace-level sessions file next to the `.code-workspace` file; a folder without its own sessions file falls back to the workspace-level one. Sessions are never merged."
+                    ],
+                    "markdownDescription": "How the sessions files of a multi-root workspace relate to each other."
                 }
             }
         }

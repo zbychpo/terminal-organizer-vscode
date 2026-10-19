@@ -1,14 +1,13 @@
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { Configuration } from '../configuration/configuration';
 import { constants } from '../utils/constants';
 import { showErrorMessageWithDetail, showGenerateConfiguration } from '../utils/utils';
 
-var getFileUriBySource = (source) => {
+var getFileUriBySource = (configuration: Configuration, source) => {
   if (source === "settings.json") {
-    return vscode.Uri.file(path.join(Configuration.vscodeDirPath, source));
+    return vscode.Uri.file(configuration.getSettingsFilePath());
   }
-  return vscode.Uri.file(Configuration.sessionFilePath);
+  return vscode.Uri.file(configuration.sessionFilePath);
 };
 var escapeRegExp = (input) => {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -23,13 +22,17 @@ var getKeywordRegex = (treeItem) => {
 };
 export var navigateAsync = async (treeItem) => {
   try {
-    const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
+    const configuration = await Configuration.resolve(treeItem);
+    if (!configuration) {
+      return;
+    }
+    const isDefinedSessionFile = await configuration.isDefinedSessionFile();
     if (!isDefinedSessionFile) {
-      await showGenerateConfiguration();
+      await showGenerateConfiguration(configuration);
       return;
     }
     const { source } = treeItem;
-    const sessionFileUri = getFileUriBySource(source);
+    const sessionFileUri = getFileUriBySource(configuration, source);
     const document = await vscode.workspace.openTextDocument(sessionFileUri);
     const content = document.getText();
     const regex = getKeywordRegex(treeItem);

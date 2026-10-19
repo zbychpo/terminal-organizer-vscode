@@ -10,7 +10,11 @@ export var duplicateSessionActivityAsync = async (sessionTreeItem) => {
     if (!sessionId) {
       return;
     }
-    const config = await Configuration.load();
+    const configuration = await Configuration.resolve(sessionTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const config = await configuration.load();
     const sessions = config?.sessions;
     if (!sessions?.[sessionId]) {
       return;
@@ -43,7 +47,7 @@ export var duplicateSessionActivityAsync = async (sessionTreeItem) => {
     const newestConfiguration: Partial<SessionConfiguration> = {
       sessions: { ...sessions, [name]: JSON.parse(JSON.stringify(sessions[sessionId])) }
     };
-    await Configuration.save(newestConfiguration);
+    await configuration.save(newestConfiguration);
     vscode.window.showInformationMessage(constants.duplicateSessionSuccess);
   } catch (error) {
     showErrorMessageWithDetail(constants.duplicateSessionFailed, error);

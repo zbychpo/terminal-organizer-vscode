@@ -9,7 +9,11 @@ export var moveSessionActivityAsync = async (sessionTreeItem, direction) => {
     if (!sessionId) {
       return;
     }
-    const config = await Configuration.load();
+    const configuration = await Configuration.resolve(sessionTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const config = await configuration.load();
     if (!config?.sessions) {
       return;
     }
@@ -22,7 +26,7 @@ export var moveSessionActivityAsync = async (sessionTreeItem, direction) => {
     sessionNames.forEach((name) => {
       sessions[name] = config.sessions[name];
     });
-    await Configuration.save({ sessions });
+    await configuration.save({ sessions });
   } catch (error) {
     showErrorMessageWithDetail(constants.moveSessionFailed, error);
   }

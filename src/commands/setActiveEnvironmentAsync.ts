@@ -8,9 +8,13 @@ export var setActiveEnvironmentAsync = async (environmentTreeItem) => {
     if (!environmentName) {
       return;
     }
-    const currentContent = await Configuration.getSessionConfiguration();
+    const configuration = await Configuration.resolve(environmentTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const currentContent = await configuration.getSessionConfiguration();
     const activeEnvironment = currentContent.activeEnvironment === environmentName ? "" : environmentName;
-    await Configuration.writeSessionFile({ ...currentContent, activeEnvironment });
+    await configuration.writeSessionFile({ ...currentContent, activeEnvironment });
   } catch (error) {
     showErrorMessageWithDetail(constants.setActiveEnvironmentFailed, error);
   }

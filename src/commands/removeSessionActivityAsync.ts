@@ -11,11 +11,15 @@ export var removeSessionActivityAsync = async (sessionTreeItem) => {
     if (!sessionId) {
       return;
     }
+    const configuration = await Configuration.resolve(sessionTreeItem);
+    if (!configuration) {
+      return;
+    }
     if (sessionId === constants.defaultSession) {
       vscode.window.showWarningMessage(constants.couldNotRemoveDefaultSession);
       return;
     }
-    const config = await Configuration.load();
+    const config = await configuration.load();
     if (!config?.sessions) {
       return;
     }
@@ -26,7 +30,7 @@ export var removeSessionActivityAsync = async (sessionTreeItem) => {
       newestConfiguration.active = constants.defaultSession;
       updateStatusBar(newestConfiguration.active);
     }
-    await Configuration.save(newestConfiguration);
+    await configuration.save(newestConfiguration);
     vscode.window.showInformationMessage(constants.removeSessionSuccess);
   } catch (error) {
     showErrorMessageWithDetail(constants.removeSessionFailed, error);

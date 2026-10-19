@@ -9,11 +9,15 @@ export var removeEnvironmentAsync = async (environmentTreeItem) => {
     if (!environmentName) {
       return;
     }
-    const currentContent = await Configuration.getSessionConfiguration();
+    const configuration = await Configuration.resolve(environmentTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const currentContent = await configuration.getSessionConfiguration();
     const environments = { ...(currentContent.environments || {}) };
     delete environments[environmentName];
     const activeEnvironment = currentContent.activeEnvironment === environmentName ? "" : currentContent.activeEnvironment;
-    await Configuration.writeSessionFile({ ...currentContent, environments, activeEnvironment });
+    await configuration.writeSessionFile({ ...currentContent, environments, activeEnvironment });
     vscode.window.showInformationMessage(constants.removeEnvironmentSuccess);
   } catch (error) {
     showErrorMessageWithDetail(constants.removeEnvironmentFailed, error);

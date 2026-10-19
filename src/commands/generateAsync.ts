@@ -4,7 +4,7 @@ import { configurationTemplate } from '../configuration/template';
 import { sysCommands, constants } from '../utils/constants';
 import { showErrorMessageWithDetail, showTextDocument, isWorkspaceOpened } from '../utils/utils';
 
-export var generateAsync = async () => {
+export var generateAsync = async (target?) => {
   try {
     if (!isWorkspaceOpened()) {
       vscode.window.showInformationMessage(
@@ -21,18 +21,25 @@ export var generateAsync = async () => {
       });
       return;
     }
-    const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
+    const configuration = await Configuration.resolveForGenerate(target);
+    if (!configuration) {
+      return;
+    }
+    const isDefinedSessionFile = await configuration.isDefinedSessionFile();
     if (isDefinedSessionFile) {
       vscode.window.showWarningMessage(constants.configurationFileAlreadyExist);
       return;
     }
-    await Configuration.save(configurationTemplate);
+    await configuration.save(configurationTemplate);
+    // A new file can change which scopes exist (e.g. a workspace-level one),
+    // and the watcher only rediscovers asynchronously.
+    await Configuration.discover();
     vscode.window.showInformationMessage(constants.generateConfigurationSuccess, constants.viewConfigurationButton).then((selection) => {
       if (selection === constants.viewConfigurationButton) {
-        showTextDocument(Configuration.sessionFilePath);
+        showTextDocument(configuration.sessionFilePath);
       }
     });
-    showTextDocument(Configuration.sessionFilePath);
+    showTextDocument(configuration.sessionFilePath);
   } catch (error) {
     showErrorMessageWithDetail(constants.generateConfigurationFailed, error);
   }

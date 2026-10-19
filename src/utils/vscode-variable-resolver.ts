@@ -4,19 +4,25 @@ import * as vscode from 'vscode';
 
 var VARIABLE_TOKEN_PATTERN = /\$\{([^}]+)\}/g;
 
-var getWorkspaceFolderPath = (name) => {
+// A bare ${workspaceFolder} resolves to defaultFolderPath when given (the
+// folder of the sessions.json being resolved, in a multi-root workspace),
+// otherwise to the first workspace folder.
+var getWorkspaceFolderPath = (name, defaultFolderPath?) => {
   const { workspaceFolders } = vscode.workspace;
+  if (name) {
+    const found = workspaceFolders?.find((folder) => folder.name === name);
+    return found ? found.uri.fsPath : undefined;
+  }
+  if (defaultFolderPath) {
+    return defaultFolderPath;
+  }
   if (!workspaceFolders || workspaceFolders.length <= 0) {
     return undefined;
-  }
-  if (name) {
-    const found = workspaceFolders.find((folder) => folder.name === name);
-    return found ? found.uri.fsPath : undefined;
   }
   return workspaceFolders[0].uri.fsPath;
 };
 
-export var resolveVscodeVariable = (value) => {
+export var resolveVscodeVariable = (value, defaultFolderPath?: string) => {
   if (typeof value !== "string") {
     return value;
   }
@@ -24,11 +30,11 @@ export var resolveVscodeVariable = (value) => {
     const [name, arg] = token.split(":");
     switch (name) {
       case "workspaceFolder": {
-        const folderPath = getWorkspaceFolderPath(arg);
+        const folderPath = getWorkspaceFolderPath(arg, defaultFolderPath);
         return folderPath ?? match;
       }
       case "workspaceFolderBasename": {
-        const folderPath = getWorkspaceFolderPath(arg);
+        const folderPath = getWorkspaceFolderPath(arg, defaultFolderPath);
         return folderPath ? path.basename(folderPath) : match;
       }
       case "userHome":
@@ -47,17 +53,17 @@ export var resolveVscodeVariable = (value) => {
   });
 };
 
-export var resolveVscodeVariablesDeep = (input) => {
+export var resolveVscodeVariablesDeep = (input, defaultFolderPath?: string) => {
   if (typeof input === "string") {
-    return resolveVscodeVariable(input);
+    return resolveVscodeVariable(input, defaultFolderPath);
   }
   if (Array.isArray(input)) {
-    return input.map((item) => resolveVscodeVariablesDeep(item));
+    return input.map((item) => resolveVscodeVariablesDeep(item, defaultFolderPath));
   }
   if (input && typeof input === "object") {
     const result = {};
     Object.entries(input).forEach(([key, value]) => {
-      result[key] = resolveVscodeVariablesDeep(value);
+      result[key] = resolveVscodeVariablesDeep(value, defaultFolderPath);
     });
     return result;
   }

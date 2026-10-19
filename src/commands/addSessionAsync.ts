@@ -3,18 +3,22 @@ import { Configuration } from '../configuration/configuration';
 import { constants } from '../utils/constants';
 import { showErrorMessageWithDetail, isWorkspaceOpened, showGenerateConfiguration } from '../utils/utils';
 
-export var addSessionAsync = async () => {
+export var addSessionAsync = async (target?) => {
   try {
     if (!isWorkspaceOpened()) {
       vscode.window.showWarningMessage(constants.openWorkspace);
       return;
     }
-    const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
-    if (!isDefinedSessionFile) {
-      await showGenerateConfiguration();
+    const configuration = await Configuration.resolve(target);
+    if (!configuration) {
       return;
     }
-    const config = await Configuration.load();
+    const isDefinedSessionFile = await configuration.isDefinedSessionFile();
+    if (!isDefinedSessionFile) {
+      await showGenerateConfiguration(configuration);
+      return;
+    }
+    const config = await configuration.load();
     const sessions = config.sessions || {};
     const name = await vscode.window.showInputBox({
       title: constants.enterSessionNameTitle,
@@ -33,7 +37,7 @@ export var addSessionAsync = async () => {
     if (!name) {
       return;
     }
-    await Configuration.save({ sessions: { ...sessions, [name]: [] } });
+    await configuration.save({ sessions: { ...sessions, [name]: [] } });
     vscode.window.showInformationMessage(constants.addSessionSuccess);
   } catch (error) {
     showErrorMessageWithDetail(constants.addSessionFailed, error);

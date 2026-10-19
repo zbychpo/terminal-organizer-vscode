@@ -8,21 +8,26 @@ import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
 import { applyEnvironmentToTerminals, resolveEnvironmentVariables } from '../utils/environment-merge';
 import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
+import { resolveRelativeCwdDeep } from '../utils/scope-merge';
 
-export var activeByTerminalAsync = async (sessionId, terminalArrayIndex, terminalItemName) => {
+export var activeByTerminalAsync = async (configuration: Configuration, sessionId, terminalArrayIndex, terminalItemName) => {
   try {
-    const foundTerminal = await findTerminal(sessionId, terminalArrayIndex, terminalItemName);
+    const foundTerminal = await findTerminal(configuration, sessionId, terminalArrayIndex, terminalItemName);
     if (!foundTerminal) {
       vscode.window.showWarningMessage(constants.selectTerminalToActive);
       return;
     }
     const { createTerminal, getCwdPath } = terminalBrowserify.TerminalApi.instance();
-    const config = await Configuration.load();
+    const config = await configuration.loadEffective();
     const { theme = "default", noClear = false, variable, environments = {}, activeEnvironment = "", joinOperator } = config;
     const activeEnvironmentVariables = resolveEnvironmentVariables(environments, activeEnvironment);
-    const terminal = substituteVariablesDeep(
-      resolveVscodeVariablesDeep(applyEnvironmentToTerminals(applyGlobalJoinOperator(foundTerminal, joinOperator), activeEnvironmentVariables)),
-      resolveVscodeVariablesDeep(variable)
+    const terminal = resolveRelativeCwdDeep(
+      substituteVariablesDeep(
+        resolveVscodeVariablesDeep(applyEnvironmentToTerminals(applyGlobalJoinOperator(foundTerminal, joinOperator), activeEnvironmentVariables), configuration.folderPath),
+        resolveVscodeVariablesDeep(variable, configuration.folderPath)
+      ),
+      configuration.folderPath,
+      configuration.ownsDefaultCwd
     );
     const themeService = new terminalBrowserify.ThemeService(theme);
     const terminals = Array.isArray(terminal) ? terminal : [terminal];

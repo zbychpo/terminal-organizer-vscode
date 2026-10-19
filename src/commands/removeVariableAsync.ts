@@ -9,10 +9,14 @@ export var removeVariableAsync = async (variableTreeItem) => {
     if (!variableName) {
       return;
     }
-    const currentContent = await Configuration.getSessionConfiguration();
+    const configuration = await Configuration.resolve(variableTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const currentContent = await configuration.getSessionConfiguration();
     const variable = { ...(currentContent.variable || {}) };
     delete variable[variableName];
-    await Configuration.writeSessionFile({ ...currentContent, variable });
+    await configuration.writeSessionFile({ ...currentContent, variable });
     vscode.window.showInformationMessage(constants.removeVariableSuccess);
   } catch (error) {
     showErrorMessageWithDetail(constants.removeVariableFailed, error);

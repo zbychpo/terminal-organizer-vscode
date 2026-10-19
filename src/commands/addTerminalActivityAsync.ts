@@ -9,7 +9,11 @@ export var addTerminalActivityAsync = async (treeItem) => {
     if (!sessionId) {
       return;
     }
-    const config = await Configuration.load();
+    const configuration = await Configuration.resolve(treeItem);
+    if (!configuration) {
+      return;
+    }
+    const config = await configuration.load();
     if (!config?.sessions) {
       return;
     }
@@ -47,7 +51,7 @@ export var addTerminalActivityAsync = async (treeItem) => {
     } else {
       session.push(newTerminal);
     }
-    await Configuration.save({ sessions });
+    await configuration.save({ sessions });
     vscode.window.showInformationMessage(constants.addTerminalSuccess);
   } catch (error) {
     showErrorMessageWithDetail(constants.addTerminalFailed, error);

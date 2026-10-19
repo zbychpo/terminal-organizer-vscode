@@ -34,16 +34,48 @@ var getTerminalQuickPickItems = (sessions) => {
   }
   return items;
 };
+// Scopes to search: the one named by args.project (a workspace folder name,
+// or the workspace-level scope's name) when given, otherwise all of them.
+var getScopesToSearch = (project) => {
+  const scopes = Configuration.all();
+  if (!project) {
+    return scopes;
+  }
+  return scopes.filter((s) => s.label === project || s.id === project || (s.kind === "workspace" && project === "workspace"));
+};
+var findTerminalInScopes = async (scopes: Configuration[], name, session) => {
+  const results = [];
+  for (const configuration of scopes) {
+    const result = await findTerminalByName(configuration, name, session);
+    if (result) {
+      results.push({ ...result, configuration });
+    }
+  }
+  if (results.length <= 1) {
+    return results[0];
+  }
+  const picked = await vscode.window.showQuickPick(
+    results.map((result) => ({ label: result.configuration.label, description: `Session: ${result.sessionId}`, detail: result.configuration.sessionFilePath, result })),
+    { title: constants.selectTerminalTitle, placeHolder: constants.selectTerminalPlaceHolder, ignoreFocusOut: true }
+  );
+  return picked?.result;
+};
+// args: { name?, session?, project? } - e.g. from a keybinding.
 export var runTerminalByNameAsync = async (args) => {
   try {
-    let { name, session } = args || {};
+    let { name, session, project } = args || {};
     if (!name) {
-      const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
-      if (!isDefinedSessionFile) {
-        await showGenerateConfiguration();
+      const scopes = getScopesToSearch(project);
+      const configuration = scopes.length === 1 ? scopes[0] : await Configuration.resolve(undefined, { title: constants.selectTerminalTitle });
+      if (!configuration) {
         return;
       }
-      const config = await Configuration.load();
+      const isDefinedSessionFile = await configuration.isDefinedSessionFile();
+      if (!isDefinedSessionFile) {
+        await showGenerateConfiguration(configuration);
+        return;
+      }
+      const config = await configuration.load();
       if (!config?.sessions) {
         vscode.window.showWarningMessage(constants.notExistAnySessions);
         return;
@@ -65,17 +97,17 @@ export var runTerminalByNameAsync = async (args) => {
       if (!selected) {
         return;
       }
-      await activeByTerminalAsync(selected.sessionId, selected.index, selected.terminalName);
+      await activeByTerminalAsync(configuration, selected.sessionId, selected.index, selected.terminalName);
       return;
     }
-    const result = await findTerminalByName(name, session);
+    const result = await findTerminalInScopes(getScopesToSearch(project), name, session);
     if (!result) {
       const message = session ? constants.terminalNotFound.replace("{name}", name).replace("{session}", session) : constants.terminalNotFoundInAny.replace("{name}", name);
       vscode.window.showWarningMessage(message);
       return;
     }
     const terminalName = Array.isArray(result.terminal) ? undefined : name;
-    await activeByTerminalAsync(result.sessionId, result.index, terminalName);
+    await activeByTerminalAsync(result.configuration, result.sessionId, result.index, terminalName);
   } catch (error) {
     showErrorMessageWithDetail(constants.runTerminalByNameFailed, error);
   }

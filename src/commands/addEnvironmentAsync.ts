@@ -3,18 +3,22 @@ import { Configuration } from '../configuration/configuration';
 import { constants } from '../utils/constants';
 import { showErrorMessageWithDetail, isWorkspaceOpened, showGenerateConfiguration } from '../utils/utils';
 
-export var addEnvironmentAsync = async () => {
+export var addEnvironmentAsync = async (target?) => {
   try {
     if (!isWorkspaceOpened()) {
       vscode.window.showWarningMessage(constants.openWorkspace);
       return;
     }
-    const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
-    if (!isDefinedSessionFile) {
-      await showGenerateConfiguration();
+    const configuration = await Configuration.resolve(target);
+    if (!configuration) {
       return;
     }
-    const currentContent = await Configuration.getSessionConfiguration();
+    const isDefinedSessionFile = await configuration.isDefinedSessionFile();
+    if (!isDefinedSessionFile) {
+      await showGenerateConfiguration(configuration);
+      return;
+    }
+    const currentContent = await configuration.getSessionConfiguration();
     const environments = currentContent.environments || {};
     const name = await vscode.window.showInputBox({
       title: constants.enterEnvironmentNameTitle,
@@ -33,10 +37,10 @@ export var addEnvironmentAsync = async () => {
     if (!name) {
       return;
     }
-    // Writes the raw file directly instead of Configuration.save(), which
+    // Writes the raw file directly instead of configuration.save(), which
     // only ever updates keys that already exist in the file - "environments"
     // wouldn't exist yet on any sessions.json generated before this feature.
-    await Configuration.writeSessionFile({
+    await configuration.writeSessionFile({
       ...currentContent,
       environments: { ...environments, [name]: {} }
     });

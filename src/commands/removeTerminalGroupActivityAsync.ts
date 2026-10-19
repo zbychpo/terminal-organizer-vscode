@@ -9,7 +9,11 @@ export var removeTerminalGroupActivityAsync = async (terminalArrayTreeItem) => {
     if (!sessionId || terminalArrayIndex === undefined) {
       return;
     }
-    const config = await Configuration.load();
+    const configuration = await Configuration.resolve(terminalArrayTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const config = await configuration.load();
     if (!config?.sessions) {
       return;
     }
@@ -19,7 +23,7 @@ export var removeTerminalGroupActivityAsync = async (terminalArrayTreeItem) => {
       return;
     }
     session.splice(terminalArrayIndex, 1);
-    await Configuration.save({ sessions });
+    await configuration.save({ sessions });
     vscode.window.showInformationMessage(constants.removeTerminalGroupSuccess);
   } catch (error) {
     showErrorMessageWithDetail(constants.removeTerminalGroupFailed, error);

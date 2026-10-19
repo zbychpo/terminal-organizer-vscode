@@ -15,7 +15,11 @@ export var toggleEnvironmentVariableMaskAsync = async (environmentVariableTreeIt
     if (!environmentName || !variableName || variableName === "inherits" || variableName === "mask") {
       return;
     }
-    const currentContent = await Configuration.getSessionConfiguration();
+    const configuration = await Configuration.resolve(environmentVariableTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const currentContent = await configuration.getSessionConfiguration();
     const environments = currentContent.environments || {};
     const environment = environments[environmentName] || {};
     const updatedMask = toggleMask(environment.mask, variableName);
@@ -25,7 +29,7 @@ export var toggleEnvironmentVariableMaskAsync = async (environmentVariableTreeIt
     } else {
       delete updatedEnvironment.mask;
     }
-    await Configuration.writeSessionFile({
+    await configuration.writeSessionFile({
       ...currentContent,
       environments: { ...environments, [environmentName]: updatedEnvironment }
     });

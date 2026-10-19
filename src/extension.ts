@@ -9,6 +9,7 @@ import { addTerminalActivityAsync } from './commands/addTerminalActivityAsync';
 import { addVariableAsync } from './commands/addVariableAsync';
 import { addEnvironmentAsync } from './commands/addEnvironmentAsync';
 import { addEnvironmentVariableAsync } from './commands/addEnvironmentVariableAsync';
+import { changeMultiRootModeAsync } from './commands/changeMultiRootModeAsync';
 import { clearAllAsync } from './commands/clearAllAsync';
 import { editConfigAsync } from './commands/editConfigAsync';
 import { editVariableAsync } from './commands/editVariableAsync';
@@ -50,29 +51,27 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     // Generate the configuration
     vscode.commands.registerCommand(extCommands.generate, async (...args) => {
-      await generateAsync();
+      await generateAsync(args?.[0]);
     }),
     // Open terminal session
     vscode.commands.registerCommand(extCommands.open, async (...args) => {
-      await openAsync();
+      await openAsync(args?.[0]);
     }),
     // Active terminal session
     vscode.commands.registerCommand(extCommands.active, async (...args) => {
-      const uri = args?.[0];
-      const cwd = uri?.fsPath;
-      await activeAsync(cwd);
+      await activeAsync(args?.[0]);
     }),
     // Save terminal session
     vscode.commands.registerCommand(extCommands.save, async (...args) => {
-      await saveAsync();
+      await saveAsync(args?.[0]);
     }),
     // Remove terminal session
     vscode.commands.registerCommand(extCommands.remove, async (...args) => {
-      await removeAsync();
+      await removeAsync(args?.[0]);
     }),
     // Migrate terminal session
     vscode.commands.registerCommand(extCommands.migrate, async (...args) => {
-      await migrateAsync();
+      await migrateAsync(args?.[0]);
     }),
     // Clear all terminals
     vscode.commands.registerCommand(extCommands.clearAll, async (...args) => {
@@ -95,18 +94,18 @@ export async function activate(context: vscode.ExtensionContext) {
   vscode.window.registerTreeDataProvider(ACTIVITY_VIEW_ID, treeProvider);
   context.subscriptions.push(
     vscode.commands.registerCommand(extCommands.refresh, async () => treeProvider.refresh()),
-    vscode.commands.registerCommand(extCommands.addSessionActivity, async () => {
-      await addSessionAsync();
+    vscode.commands.registerCommand(extCommands.addSessionActivity, async (treeItem) => {
+      await addSessionAsync(treeItem);
     }),
     vscode.commands.registerCommand(extCommands.addTerminalActivity, async (treeItem) => {
       await addTerminalActivityAsync(treeItem);
     }),
     vscode.commands.registerCommand(extCommands.activeSessionActivity, async (sessionTreeItem) => {
       const { sessionId } = sessionTreeItem;
-      await activeBySessionAsync(sessionId, true);
+      await activeBySessionAsync(await Configuration.resolve(sessionTreeItem), sessionId, true);
     }),
-    vscode.commands.registerCommand(extCommands.activeMultipleSessionsActivity, async () => {
-      await activeMultipleSessionsAsync();
+    vscode.commands.registerCommand(extCommands.activeMultipleSessionsActivity, async (treeItem) => {
+      await activeMultipleSessionsAsync(treeItem);
     }),
     vscode.commands.registerCommand(extCommands.duplicateSessionActivity, async (sessionTreeItem) => {
       await duplicateSessionActivityAsync(sessionTreeItem);
@@ -155,10 +154,11 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand(extCommands.sendToNewTerminalActivity, async (sessionTreeItem) => {
       const { sessionId, terminalArrayIndex, label, contextValue } = sessionTreeItem;
+      const configuration = await Configuration.resolve(sessionTreeItem);
       if (contextValue === "terminal-array-context") {
-        await activeByTerminalAsync(sessionId, terminalArrayIndex, undefined);
+        await activeByTerminalAsync(configuration, sessionId, terminalArrayIndex, undefined);
       } else {
-        await activeByTerminalAsync(sessionId, terminalArrayIndex, label);
+        await activeByTerminalAsync(configuration, sessionId, terminalArrayIndex, label);
       }
     }),
     vscode.commands.registerCommand(extCommands.sendToCurrentTerminalActivity, async (sessionTreeItem) => {
@@ -167,7 +167,7 @@ export async function activate(context: vscode.ExtensionContext) {
       if (activeTerminal) {
         activeTerminal.sendText(`${description || ""}`, false);
       } else {
-        await activeByTerminalAsync(sessionId, terminalArrayIndex, label);
+        await activeByTerminalAsync(await Configuration.resolve(sessionTreeItem), sessionId, terminalArrayIndex, label);
       }
     }),
     vscode.commands.registerCommand(extCommands.copyCommandActivity, async (sessionTreeItem) => {
@@ -204,11 +204,11 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(extCommands.editConfigActivity, async (configTreeItem) => {
       await editConfigAsync(configTreeItem);
     }),
-    vscode.commands.registerCommand(extCommands.addVariableActivity, async () => {
-      await addVariableAsync();
+    vscode.commands.registerCommand(extCommands.addVariableActivity, async (treeItem) => {
+      await addVariableAsync(treeItem);
     }),
-    vscode.commands.registerCommand(extCommands.importVariablesActivity, async () => {
-      await importVariablesAsync();
+    vscode.commands.registerCommand(extCommands.importVariablesActivity, async (treeItem) => {
+      await importVariablesAsync(treeItem);
     }),
     vscode.commands.registerCommand(extCommands.editVariableActivity, async (variableTreeItem) => {
       await editVariableAsync(variableTreeItem);
@@ -216,8 +216,8 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(extCommands.removeVariableActivity, async (variableTreeItem) => {
       await removeVariableAsync(variableTreeItem);
     }),
-    vscode.commands.registerCommand(extCommands.addEnvironmentActivity, async () => {
-      await addEnvironmentAsync();
+    vscode.commands.registerCommand(extCommands.addEnvironmentActivity, async (treeItem) => {
+      await addEnvironmentAsync(treeItem);
     }),
     vscode.commands.registerCommand(extCommands.duplicateEnvironmentActivity, async (environmentTreeItem) => {
       await duplicateEnvironmentActivityAsync(environmentTreeItem);
@@ -240,17 +240,31 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(extCommands.editEnvironmentInheritanceActivity, async (environmentTreeItem) => {
       await editEnvironmentInheritanceAsync(environmentTreeItem);
     }),
+    vscode.commands.registerCommand(extCommands.changeMultiRootModeActivity, async () => {
+      await changeMultiRootModeAsync();
+    }),
     vscode.commands.registerCommand(extCommands.toggleEnvironmentVariableMaskActivity, async (environmentVariableTreeItem) => {
       await toggleEnvironmentVariableMaskAsync(environmentVariableTreeItem);
     })
   );
-  Configuration.watch(() => treeProvider.refresh());
-  const { $schema = "", activateOnStartup = false, active } = await Configuration.load();
-  if ($schema && $schema !== schemaUri.toString()) {
-    await vscode.commands.executeCommand(extCommands.migrate);
-  }
-  if (activateOnStartup) {
-    await activeBySessionAsync(active);
+  context.subscriptions.push(Configuration.watch(() => treeProvider.refresh()));
+  // Each project (scope) is migrated and auto-activated on its own. Only the
+  // first one to activate may kill existing terminals - later ones keep them,
+  // so two projects with activateOnStartup don't close each other's terminals.
+  let hasActivatedOnStartup = false;
+  for (const configuration of Configuration.all()) {
+    if (!(await configuration.isDefinedSessionFile())) {
+      continue;
+    }
+    const { $schema = "" } = await configuration.load();
+    if ($schema && $schema !== schemaUri.toString()) {
+      await migrateAsync({ scopeId: configuration.id });
+    }
+    const { activateOnStartup = false, active } = await configuration.loadEffective();
+    if (activateOnStartup) {
+      await activeBySessionAsync(configuration, active, false, hasActivatedOnStartup);
+      hasActivatedOnStartup = true;
+    }
   }
 }
 export async function deactivate() {

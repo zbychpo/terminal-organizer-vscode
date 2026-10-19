@@ -492,6 +492,34 @@ If an environment holds a secret (an API key, a token, a password), set `mask` t
 
 `API_KEY` then shows as `••••••••` in the environment's own tree row, its tooltip, and the resolved `env` shown in every terminal tooltip that merges this environment in (directly or through `inherits` - masking a variable on a base environment also masks it for anything that inherits from it). This is purely a display concern: the real value is still substituted and used when a terminal actually launches. Toggle it from the inline **toggle mask** ($(eye)) button on an environment variable - the button's own icon switches between $(symbol-variable) and $(eye-closed) to show the current state.
 
+### Multi-root workspaces ✨
+
+In a multi-root workspace every folder can have its own sessions file, and the workspace itself can have a shared one:
+
+```
+my-app/
+├── my-app.code-workspace
+├── .vscode/sessions.json        <- workspace-level (shared) configuration
+├── frontend/.vscode/sessions.json
+├── backend/sessions.json
+└── infrastructure/              <- no sessions file
+```
+
+- Each folder is looked up at the locations in `terminal-organizer-vscode.sessionFileLocations` (default: `.vscode/sessions.json`, then `sessions.json`); the first existing file wins and a new one is created at the first location.
+- The workspace-level file lives next to the `.code-workspace` file, at the same locations. It is only used when that directory isn't itself one of the workspace folders.
+- The Activity Bar shows one node per project (the workspace-level one first), each with its own **Global Configs**, **Sessions**, **Variables** and **Environments**. A project without a sessions file has an inline **Generate Configuration** button. A single-folder workspace looks exactly as before.
+- Commands run from the command palette or the view title act on the project of the active editor, or ask you to pick one. **Import** writes into the project the imported file belongs to. A relative `cwd` and a bare `${workspaceFolder}` resolve against the terminal's own project folder.
+- **Run Terminal by Name** searches every project; pass `"project": "<folder name>"` in the keybinding args to narrow it down.
+
+`terminal-organizer-vscode.multiRootMode` controls how the files relate. The current mode is shown at the top of the Activity Bar tree (**Multi-root mode: separate/inherit**); hover over it for a description, click it to open the setting, or use its inline **Change Multi-root Mode** button to switch (saved in the workspace settings, i.e. the `.code-workspace` file):
+
+| Value | Behavior |
+|---|---|
+| `separate` (default) | Every folder uses only its own sessions file. |
+| `inherit` | Every folder inherits `variable` and `environments` from the workspace-level file (key by key, the folder wins), plus `theme`, `keepExistingTerminals`, `noClear`, `joinOperator` and `activeEnvironment` when it leaves them unset. A folder without its own file falls back to the workspace-level one. Sessions are never merged. Inherited variables and environments are shown read-only in the folder's tree, marked "from &lt;workspace&gt;". |
+
+The session-related settings (`active`, `activateOnStartup`, `keepExistingTerminals`, `noClear`, `joinOperator`, `openNodeOnStart`, `theme`) are resource-scoped, so a folder's `.vscode/settings.json` can override the workspace's.
+
 ### Keybinding support
 
 Run specific terminals directly via keyboard shortcuts by adding custom keybindings to your `keybindings.json`:
@@ -529,16 +557,36 @@ If you see this VS Code message:
 The terminal process failed to launch: A native exception occurred during launch (posix_spawnp failed.).
 ```
 
-The failure usually means VS Code could not start a terminal process. It is typically caused by shell configuration, PATH issues, or conflicts with local system tools rather than Terminal Organizer itself.
+The failure means VS Code could not start a terminal process. It is usually caused by shell configuration, PATH issues, or conflicts with local system tools. It can also come from the terminal's own options in `sessions.json`. (`posix_spawnp` is the macOS/Linux wording; on Windows the same kind of failure is reported differently, e.g. as a ConPTY/WinPTY error.)
 
 Try these steps first:
 
-1. Close all VS Code windows and reopen the project.
-2. Restart your computer if the issue continues.
-3. Check your VS Code terminal profile and shell path settings.
-4. Review the official VS Code terminal troubleshooting guide: https://code.visualstudio.com/docs/supporting/troubleshoot-terminal-launch
+1. If only terminals started by Terminal Organizer fail, check the failing terminal's `shellPath`, `shellArgs` and `cwd` in `sessions.json`. A shell path that doesn't exist or arguments that the shell rejects produce exactly this error. Remember that `${variable:NAME}` and `${workspaceFolder}` are substituted into these fields before launch, so check the variable's value too. Hovering over the terminal in the Activity Bar shows its resolved commands and `env`.
+2. Close all VS Code windows and reopen the project.
+3. Restart your computer if the issue continues.
+4. Check your VS Code terminal profile and shell path settings.
+5. Review the official VS Code terminal troubleshooting guide: https://code.visualstudio.com/docs/supporting/troubleshoot-terminal-launch
 
-Please open a Terminal Organizer issue only if the terminal launches normally without this extension but fails specifically when Terminal Organizer activates a session.
+Please open a Terminal Organizer issue only if the terminal launches normally without this extension, and also fails with the same `shellPath`/`shellArgs`/`cwd` set in a regular VS Code terminal profile, but fails specifically when Terminal Organizer activates a session.
+
+### Sessions, variables or settings are missing from the Activity Bar
+
+If the Activity Bar shows the groups but your sessions, variables or environments are missing (or a project's node looks empty), the `sessions.json` file most likely isn't valid JSON. The file is read with a strict JSON parser, so comments and trailing commas aren't allowed. A file that fails to parse is treated as empty, without an error message:
+
+```jsonc
+"openNodeOnStart": [
+    "default",   // <- trailing comma: the whole file is ignored
+],
+```
+
+Open the file (**Open Configuration**). VS Code's JSON validation underlines the problem, and the schema shows any unknown keys.
+
+### A project's sessions file isn't picked up in a multi-root workspace
+
+- Each project must be its own folder in the `.code-workspace` file. Subdirectories of a single opened folder aren't searched, so `my-app/backend/sessions.json` is ignored when `my-app` is opened as one folder.
+- The file must be at one of the locations in `terminal-organizer-vscode.sessionFileLocations` (default: `.vscode/sessions.json`, then `sessions.json`), relative to that folder. If both exist, the first one in the list is used.
+- The workspace-level file is only used when it sits next to a saved `.code-workspace` file whose directory isn't itself one of the workspace folders.
+- Variables, environments and options from the workspace-level file only reach the folders when `terminal-organizer-vscode.multiRootMode` is `inherit`. In the default `separate` mode every folder uses only its own file.
 
 ## Feedback
 

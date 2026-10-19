@@ -8,15 +8,19 @@ import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
 import { applyEnvironmentToTerminals, resolveEnvironmentVariables } from '../utils/environment-merge';
 import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
+import { resolveRelativeCwdDeep } from '../utils/scope-merge';
 
-export var activeBySessionAsync = async (activeSession, isSaveActiveSession = false, forceKeepExistingTerminals = false) => {
+export var activeBySessionAsync = async (configuration: Configuration, activeSession, isSaveActiveSession = false, forceKeepExistingTerminals = false) => {
   try {
-    const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
-    if (!isDefinedSessionFile) {
-      await showGenerateConfiguration();
+    if (!configuration) {
       return;
     }
-    const config = await Configuration.load();
+    const isDefinedSessionFile = await configuration.isDefinedSessionFile();
+    if (!isDefinedSessionFile) {
+      await showGenerateConfiguration(configuration);
+      return;
+    }
+    const config = await configuration.loadEffective();
     const { keepExistingTerminals = false, sessions, theme = "default", noClear = false, variable, environments = {}, activeEnvironment = "", joinOperator } = config;
     if (!sessions) {
       vscode.window.showWarningMessage(constants.notExistAnySessions);
@@ -32,7 +36,7 @@ export var activeBySessionAsync = async (activeSession, isSaveActiveSession = fa
       return;
     }
     const activeEnvironmentVariables = resolveEnvironmentVariables(environments, activeEnvironment);
-    const activatedSession = substituteVariablesDeep(
+    const activatedSession = resolveRelativeCwdDeep(substituteVariablesDeep(
       resolveVscodeVariablesDeep(
         applyEnvironmentToTerminals(
           applyGlobalJoinOperator(
@@ -47,10 +51,11 @@ export var activeBySessionAsync = async (activeSession, isSaveActiveSession = fa
             joinOperator
           ),
           activeEnvironmentVariables
-        )
+        ),
+        configuration.folderPath
       ),
-      resolveVscodeVariablesDeep(variable)
-    );
+      resolveVscodeVariablesDeep(variable, configuration.folderPath)
+    ), configuration.folderPath, configuration.ownsDefaultCwd);
     if (!activatedSession || activatedSession.length <= 0) {
       vscode.window.showWarningMessage(constants.notExistAnySpitTerminalAfterFilter.replace("{session}", activeSession));
       return;
@@ -101,10 +106,10 @@ export var activeBySessionAsync = async (activeSession, isSaveActiveSession = fa
           }
         });
         focusTerminal(flatActivatedSession);
-        updateStatusBar(activeSession);
+        updateStatusBar(activeSession, configuration.isMultiScope ? configuration.label : undefined);
         progress.report({ message: "Waiting for the terminal session to render completely..." });
         if (isSaveActiveSession) {
-          await Configuration.save({ active: activeSession });
+          await configuration.save({ active: activeSession });
         }
         return "Initialization of the terminal session completed!";
       }

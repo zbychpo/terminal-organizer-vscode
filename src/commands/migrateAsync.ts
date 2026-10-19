@@ -5,13 +5,21 @@ import { schemaUri } from '../configuration/schemaProvider';
 import { constants } from '../utils/constants';
 import { showErrorMessageWithDetail } from '../utils/utils';
 
-export var migrateAsync = async () => {
+// Migrates the given scope's sessions file, or every scope's when called
+// without one (e.g. from the command palette).
+export var migrateAsync = async (target?) => {
+  const configurations = target?.scopeId ? [Configuration.get(target.scopeId)].filter(Boolean) : Configuration.all();
+  for (const configuration of configurations) {
+    await migrateScopeAsync(configuration);
+  }
+};
+var migrateScopeAsync = async (configuration: Configuration) => {
   try {
-    const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
+    const isDefinedSessionFile = await configuration.isDefinedSessionFile();
     if (!isDefinedSessionFile) {
       return;
     }
-    const currentConfiguration = await Configuration.load();
+    const currentConfiguration = await configuration.load();
     if (!currentConfiguration) {
       return;
     }
@@ -44,7 +52,7 @@ export var migrateAsync = async () => {
     // value was (e.g. the now-dead cdn.statically.io URL) - this is the only
     // schema this extension ships and can guarantee resolves.
     migrateConfiguration.$schema = schemaUri.toString();
-    await Configuration.save(migrateConfiguration);
+    await configuration.save(migrateConfiguration);
   } catch (error) {
     showErrorMessageWithDetail(constants.migrateConfigurationFailed, error);
   }

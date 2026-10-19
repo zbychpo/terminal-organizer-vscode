@@ -9,7 +9,11 @@ export var duplicateEnvironmentActivityAsync = async (environmentTreeItem) => {
     if (!environmentName) {
       return;
     }
-    const currentContent = await Configuration.getSessionConfiguration();
+    const configuration = await Configuration.resolve(environmentTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const currentContent = await configuration.getSessionConfiguration();
     const environments = currentContent.environments || {};
     if (!Object.prototype.hasOwnProperty.call(environments, environmentName)) {
       return;
@@ -39,7 +43,7 @@ export var duplicateEnvironmentActivityAsync = async (environmentTreeItem) => {
     if (!name) {
       return;
     }
-    await Configuration.writeSessionFile({
+    await configuration.writeSessionFile({
       ...currentContent,
       environments: { ...environments, [name]: { ...environments[environmentName] } }
     });

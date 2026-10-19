@@ -82,15 +82,24 @@ export var getTabWidth = () => {
   const defaultTabWidth = 4;
   return defaultTabWidth;
 };
-export var showGenerateConfiguration = async () => {
+export var showGenerateConfiguration = async (configuration?: Configuration) => {
   const quickPickItem = await showQuickPick({
-    title: constants.generateConfigurationTitle,
+    title: configuration?.isMultiScope ? `${constants.generateConfigurationTitle} (${configuration.label})` : constants.generateConfigurationTitle,
     placeHolder: constants.generateConfigurationPlaceHolder,
     items: [constants.yesButton, constants.noButton]
   });
   if (quickPickItem && quickPickItem.label === constants.yesButton) {
-    await vscode.commands.executeCommand(extCommands.generate);
+    await vscode.commands.executeCommand(extCommands.generate, configuration ? { scopeId: configuration.id } : undefined);
   }
+};
+// Shows "open a folder/workspace" when no scope can be resolved because
+// nothing is open; returns whether a workspace is open.
+export var ensureWorkspaceOpened = () => {
+  if (Configuration.all().length > 0) {
+    return true;
+  }
+  vscode.window.showWarningMessage(constants.openWorkspace);
+  return false;
 };
 export var isWorkspaceOpened = () => {
   return vscode.workspace.name !== undefined;

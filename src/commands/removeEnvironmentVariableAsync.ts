@@ -9,7 +9,11 @@ export var removeEnvironmentVariableAsync = async (environmentVariableTreeItem) 
     if (!environmentName || !variableName || variableName === "inherits" || variableName === "mask") {
       return;
     }
-    const currentContent = await Configuration.getSessionConfiguration();
+    const configuration = await Configuration.resolve(environmentVariableTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const currentContent = await configuration.getSessionConfiguration();
     const environments = currentContent.environments || {};
     const environment = { ...(environments[environmentName] || {}) };
     delete environment[variableName];
@@ -21,7 +25,7 @@ export var removeEnvironmentVariableAsync = async (environmentVariableTreeItem) 
         delete environment.mask;
       }
     }
-    await Configuration.writeSessionFile({
+    await configuration.writeSessionFile({
       ...currentContent,
       environments: { ...environments, [environmentName]: environment }
     });

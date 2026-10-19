@@ -20,7 +20,12 @@ var showStatusBar = (activeSession) => {
   statusItem.show();
   return statusItem;
 };
-export var updateStatusBar = (activeSession) => {
+// In a multi-root workspace the session name is prefixed with the project
+// (scope) it belongs to, e.g. "backend › default".
+export var updateStatusBar = (activeSession, scopeLabel?: string) => {
+  if (scopeLabel) {
+    activeSession = `${scopeLabel} › ${activeSession}`;
+  }
   if (!statusItem) {
     statusItem = showStatusBar(activeSession);
     return;

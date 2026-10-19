@@ -8,15 +8,23 @@ import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
 import { applyEnvironmentToTerminals, resolveEnvironmentVariables } from '../utils/environment-merge';
 import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
+import { resolveRelativeCwdDeep } from '../utils/scope-merge';
 
-export var activeAsync = async (workspacePath) => {
+// target: the folder Uri when run from the Explorer's context menu (also used
+// as the fallback cwd), a scope tree item, or undefined.
+export var activeAsync = async (target?) => {
   try {
-    const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
-    if (!isDefinedSessionFile) {
-      await showGenerateConfiguration();
+    const configuration = await Configuration.resolve(target, { title: constants.selectSessionActiveTitle });
+    if (!configuration) {
       return;
     }
-    const config = await Configuration.load();
+    const workspacePath = target instanceof vscode.Uri ? target.fsPath : configuration.ownsDefaultCwd ? configuration.folderPath : undefined;
+    const isDefinedSessionFile = await configuration.isDefinedSessionFile();
+    if (!isDefinedSessionFile) {
+      await showGenerateConfiguration(configuration);
+      return;
+    }
+    const config = await configuration.loadEffective();
     const { keepExistingTerminals = false, sessions, theme = "default", noClear = false, active = "", variable, environments = {}, activeEnvironment = "", joinOperator } = config;
     if (!sessions) {
       vscode.window.showWarningMessage(constants.notExistAnySessions);
@@ -47,7 +55,7 @@ export var activeAsync = async (workspacePath) => {
       return;
     }
     const activeEnvironmentVariables = resolveEnvironmentVariables(environments, activeEnvironment);
-    const activatedSession = substituteVariablesDeep(
+    const activatedSession = resolveRelativeCwdDeep(substituteVariablesDeep(
       resolveVscodeVariablesDeep(
         applyEnvironmentToTerminals(
           applyGlobalJoinOperator(
@@ -62,10 +70,11 @@ export var activeAsync = async (workspacePath) => {
             joinOperator
           ),
           activeEnvironmentVariables
-        )
+        ),
+        configuration.folderPath
       ),
-      resolveVscodeVariablesDeep(variable)
-    );
+      resolveVscodeVariablesDeep(variable, configuration.folderPath)
+    ), configuration.folderPath, configuration.ownsDefaultCwd);
     if (!activatedSession || activatedSession.length <= 0) {
       vscode.window.showWarningMessage(constants.notExistAnySpitTerminalAfterFilter.replace("{session}", selectedSessionKey));
       return;
@@ -119,9 +128,9 @@ export var activeAsync = async (workspacePath) => {
           }
         });
         focusTerminal(flatActivatedSession);
-        updateStatusBar(selectedSessionKey);
+        updateStatusBar(selectedSessionKey, configuration.isMultiScope ? configuration.label : undefined);
         progress.report({ message: "Waiting for the terminal session to render completely..." });
-        await Configuration.save({ active: selectedSessionKey });
+        await configuration.save({ active: selectedSessionKey });
         return "Initialization of the terminal session completed!";
       }
     );

@@ -9,7 +9,11 @@ export var moveTerminalGroupActivityAsync = async (terminalArrayTreeItem, direct
     if (!sessionId || terminalArrayIndex === undefined) {
       return;
     }
-    const config = await Configuration.load();
+    const configuration = await Configuration.resolve(terminalArrayTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const config = await configuration.load();
     if (!config?.sessions) {
       return;
     }
@@ -18,7 +22,7 @@ export var moveTerminalGroupActivityAsync = async (terminalArrayTreeItem, direct
     if (!session?.[terminalArrayIndex] || !swapAdjacent(session, terminalArrayIndex, direction)) {
       return;
     }
-    await Configuration.save({ sessions });
+    await configuration.save({ sessions });
   } catch (error) {
     showErrorMessageWithDetail(constants.moveTerminalGroupFailed, error);
   }

@@ -45,14 +45,18 @@ var chooseSessionName2 = async (config) => {
   }
   return sessionName;
 };
-export var saveAsync = async () => {
+export var saveAsync = async (target?) => {
   try {
-    const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
+    const configuration = await Configuration.resolve(target);
+    if (!configuration) {
+      return;
+    }
+    const isDefinedSessionFile = await configuration.isDefinedSessionFile();
     if (!isDefinedSessionFile) {
       vscode.window.showWarningMessage(constants.notExistConfiguration);
       return;
     }
-    const config = await Configuration.load();
+    const config = await configuration.load();
     if (!config) {
       vscode.window.showWarningMessage(constants.notExistConfiguration);
       return;
@@ -68,10 +72,10 @@ export var saveAsync = async () => {
       };
     }
     const newestSessions = { ...config.sessions, ...{ [sessionName]: session } };
-    await Configuration.save({ sessions: newestSessions });
+    await configuration.save({ sessions: newestSessions });
     vscode.window.showInformationMessage(constants.saveSessionSuccess, constants.viewConfigurationButton).then((selection) => {
       if (selection === constants.viewConfigurationButton) {
-        showTextDocument(Configuration.sessionFilePath);
+        showTextDocument(configuration.sessionFilePath);
       }
     });
   } catch (error) {

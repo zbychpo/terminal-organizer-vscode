@@ -1,15 +1,15 @@
 import { Configuration } from '../configuration/configuration';
 
-export var findTerminal = async (sessionId, terminalArrayIndex, terminalItemName) => {
-  console.log("findTerminal", sessionId, terminalArrayIndex, terminalItemName);
-  if (!sessionId || terminalArrayIndex === undefined) {
+export var findTerminal = async (configuration: Configuration, sessionId, terminalArrayIndex, terminalItemName) => {
+  console.log("findTerminal", configuration?.label, sessionId, terminalArrayIndex, terminalItemName);
+  if (!configuration || !sessionId || terminalArrayIndex === undefined) {
     return undefined;
   }
-  const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
+  const isDefinedSessionFile = await configuration.isDefinedSessionFile();
   if (!isDefinedSessionFile) {
     return undefined;
   }
-  const config = await Configuration.load();
+  const config = await configuration.load();
   if (!config || !config.sessions) {
     return undefined;
   }
@@ -38,12 +38,15 @@ export var findTerminal = async (sessionId, terminalArrayIndex, terminalItemName
   return foundTerminal;
 };
 
-export var findTerminalByName = async (terminalName, sessionId) => {
-  const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
+export var findTerminalByName = async (configuration: Configuration, terminalName, sessionId) => {
+  if (!configuration) {
+    return undefined;
+  }
+  const isDefinedSessionFile = await configuration.isDefinedSessionFile();
   if (!isDefinedSessionFile) {
     return undefined;
   }
-  const config = await Configuration.load();
+  const config = await configuration.load();
   if (!config?.sessions) {
     return undefined;
   }

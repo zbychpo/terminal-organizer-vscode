@@ -6,15 +6,19 @@ import { constants } from '../utils/constants';
 import { parseDotEnv } from '../utils/parse-dotenv';
 import { showErrorMessageWithDetail, isWorkspaceOpened, showGenerateConfiguration } from '../utils/utils';
 
-export var importVariablesAsync = async () => {
+export var importVariablesAsync = async (target?) => {
   try {
     if (!isWorkspaceOpened()) {
       vscode.window.showWarningMessage(constants.openWorkspace);
       return;
     }
-    const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
+    const configuration = await Configuration.resolve(target);
+    if (!configuration) {
+      return;
+    }
+    const isDefinedSessionFile = await configuration.isDefinedSessionFile();
     if (!isDefinedSessionFile) {
-      await showGenerateConfiguration();
+      await showGenerateConfiguration(configuration);
       return;
     }
     const picked = await vscode.window.showOpenDialog({
@@ -35,12 +39,12 @@ export var importVariablesAsync = async () => {
       vscode.window.showWarningMessage(constants.importVariablesEmpty);
       return;
     }
-    // Writes the raw file directly instead of Configuration.save(), which
+    // Writes the raw file directly instead of configuration.save(), which
     // only ever updates keys that already exist in the file - "variable"
     // wouldn't exist yet on any sessions.json generated before this feature.
-    const currentContent = await Configuration.getSessionConfiguration();
+    const currentContent = await configuration.getSessionConfiguration();
     const variable = currentContent.variable || {};
-    await Configuration.writeSessionFile({
+    await configuration.writeSessionFile({
       ...currentContent,
       variable: { ...variable, ...importedVariables }
     });
@@ -56,9 +60,9 @@ export var importVariablesAsync = async () => {
       importedNames.forEach((name) => {
         importedVariableReferences[name] = `\${variable:${name}}`;
       });
-      const updatedContent = await Configuration.getSessionConfiguration();
+      const updatedContent = await configuration.getSessionConfiguration();
       const environments = updatedContent.environments || {};
-      await Configuration.writeSessionFile({
+      await configuration.writeSessionFile({
         ...updatedContent,
         environments: { ...environments, [environmentName]: { ...(environments[environmentName] || {}), ...importedVariableReferences } }
       });

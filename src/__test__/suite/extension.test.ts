@@ -12,6 +12,7 @@ import { buildCommands as buildTasksCommands } from '../../commands/modules/task
 import { applyTerminalFieldUpdate, describeField, validateJsonStringArray, validateJsonStringRecord } from '../../commands/editTerminalActivityAsync';
 import { toggleMask } from '../../commands/toggleEnvironmentVariableMaskAsync';
 import { configurationTemplate } from '../../configuration/template';
+import { mergeScopeConfigurations, resolveRelativeCwdDeep } from '../../utils/scope-merge';
 
 const EXTENSION_ID = 'zbigniewpowroznik.terminal-organizer-vscode';
 const LATEST_SCHEMA_URI = 'terminal-organizer-vscode-schema:/v11/terminal-organizer-vscode.json';
@@ -645,5 +646,70 @@ suite('Terminal Organizer Extension Test Suite', () => {
 
     test('The generated configuration template starts with a single empty "default" session', () => {
         assert.deepStrictEqual(configurationTemplate.sessions, { default: [] });
+    });
+
+    test('Multi-root settings are contributed with sensible defaults', () => {
+        const ext = vscode.extensions.getExtension(EXTENSION_ID);
+        assert.ok(ext);
+        const properties = ext!.packageJSON.contributes.configuration.properties;
+        assert.deepStrictEqual(properties['terminal-organizer-vscode.sessionFileLocations'].default, ['.vscode/sessions.json', 'sessions.json']);
+        assert.strictEqual(properties['terminal-organizer-vscode.multiRootMode'].default, 'separate');
+        assert.strictEqual(properties['terminal-organizer-vscode.theme'].scope, 'resource');
+    });
+
+    test('mergeScopeConfigurations merges variable/environments with the folder winning, and fills only unset options', () => {
+        const base = {
+            theme: 'neon',
+            noClear: true,
+            joinOperator: '&&',
+            activeEnvironment: 'dev',
+            variable: { javaHome: '/opt/java', prj: '/ws' },
+            environments: { dev: { A: '1' }, prod: { A: '2' } },
+            sessions: { shared: [{ name: 'ws' }] }
+        };
+        const own = {
+            theme: 'tribe',
+            joinOperator: '',
+            variable: { prj: '/ws/backend' },
+            environments: { dev: { B: '3' } },
+            sessions: { default: [{ name: 'api' }] }
+        };
+        const merged = mergeScopeConfigurations(base, own);
+        assert.strictEqual(merged.theme, 'tribe');
+        assert.strictEqual(merged.noClear, true);
+        assert.strictEqual(merged.joinOperator, '&&');
+        assert.strictEqual(merged.activeEnvironment, 'dev');
+        assert.deepStrictEqual(merged.variable, { javaHome: '/opt/java', prj: '/ws/backend' });
+        assert.deepStrictEqual(merged.environments, { dev: { B: '3' }, prod: { A: '2' } });
+        assert.deepStrictEqual(merged.sessions, { default: [{ name: 'api' }] }, 'sessions must never be merged across scopes');
+        assert.deepStrictEqual(own.variable, { prj: '/ws/backend' }, 'the folder configuration must not be mutated');
+    });
+
+    test('mergeScopeConfigurations is a no-op without a base configuration', () => {
+        const own = { theme: 'tribe', sessions: { default: [] } };
+        assert.deepStrictEqual(mergeScopeConfigurations(undefined, own), own);
+    });
+
+    test('resolveRelativeCwdDeep makes relative cwds absolute against the scope folder, in standalone and split terminals', () => {
+        const folder = path.join(os.tmpdir(), 'backend');
+        const absolute = path.join(os.tmpdir(), 'elsewhere');
+        const session: any[] = [
+            { name: 'a', cwd: 'src' },
+            [{ name: 'b', cwd: absolute }, { name: 'c' }]
+        ];
+        const resolved = resolveRelativeCwdDeep(session, folder);
+        assert.strictEqual(resolved[0].cwd, path.join(folder, 'src'));
+        assert.strictEqual(resolved[1][0].cwd, absolute);
+        assert.strictEqual(resolved[1][1].cwd, undefined, 'a missing cwd is left alone unless fillMissing is set');
+        assert.strictEqual((session[0] as any).cwd, 'src', 'the input must not be mutated');
+
+        const filled = resolveRelativeCwdDeep(session, folder, true);
+        assert.strictEqual(filled[1][1].cwd, folder);
+    });
+
+    test('resolveVscodeVariable resolves a bare ${workspaceFolder} to the given scope folder', () => {
+        const folder = path.join(os.tmpdir(), 'frontend');
+        assert.strictEqual(resolveVscodeVariable('${workspaceFolder}/src', folder), `${folder}/src`);
+        assert.strictEqual(resolveVscodeVariable('${workspaceFolderBasename}', folder), 'frontend');
     });
 });

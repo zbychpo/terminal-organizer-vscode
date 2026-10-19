@@ -9,7 +9,11 @@ export var editEnvironmentVariableAsync = async (environmentVariableTreeItem) =>
     if (!environmentName || !variableName || variableName === "inherits" || variableName === "mask") {
       return;
     }
-    const currentContent = await Configuration.getSessionConfiguration();
+    const configuration = await Configuration.resolve(environmentVariableTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const currentContent = await configuration.getSessionConfiguration();
     const environments = currentContent.environments || {};
     const environment = environments[environmentName] || {};
     const value = await pickVariableValue(environment[variableName] ?? "", {
@@ -19,7 +23,7 @@ export var editEnvironmentVariableAsync = async (environmentVariableTreeItem) =>
     if (value === undefined) {
       return;
     }
-    await Configuration.writeSessionFile({
+    await configuration.writeSessionFile({
       ...currentContent,
       environments: { ...environments, [environmentName]: { ...environment, [variableName]: value } }
     });

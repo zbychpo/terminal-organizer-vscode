@@ -9,7 +9,11 @@ export var removeTerminalActivityAsync = async (terminalTreeItem) => {
     if (!sessionId || terminalArrayIndex === undefined) {
       return;
     }
-    const config = await Configuration.load();
+    const configuration = await Configuration.resolve(terminalTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const config = await configuration.load();
     if (!config?.sessions) {
       return;
     }
@@ -31,7 +35,7 @@ export var removeTerminalActivityAsync = async (terminalTreeItem) => {
     } else {
       session.splice(terminalArrayIndex, 1);
     }
-    await Configuration.save({ sessions });
+    await configuration.save({ sessions });
     vscode.window.showInformationMessage(constants.removeTerminalSuccess);
   } catch (error) {
     showErrorMessageWithDetail(constants.removeTerminalFailed, error);

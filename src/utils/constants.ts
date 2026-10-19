@@ -54,12 +54,14 @@ export var extCommands = {
   editEnvironmentVariableActivity: "terminal-organizer-vscode.edit-environment-variable-activity",
   removeEnvironmentVariableActivity: "terminal-organizer-vscode.remove-environment-variable-activity",
   editEnvironmentInheritanceActivity: "terminal-organizer-vscode.edit-environment-inheritance-activity",
-  toggleEnvironmentVariableMaskActivity: "terminal-organizer-vscode.toggle-environment-variable-mask-activity"
+  toggleEnvironmentVariableMaskActivity: "terminal-organizer-vscode.toggle-environment-variable-mask-activity",
+  changeMultiRootModeActivity: "terminal-organizer-vscode.change-multi-root-mode-activity"
 };
 export var ACTIVITY_VIEW_ID = "terminalOrganizerActivityView";
 export var sysCommands = {
   openFolder: "workbench.action.files.openFolder",
   openWorkspace: "workbench.action.openWorkspace",
+  openSettings: "workbench.action.openSettings",
   terminalTabFocus: "workbench.action.terminal.focus",
   terminalClear: "workbench.action.terminal.clear",
   activityCollapseAll: `workbench.actions.treeView.${ACTIVITY_VIEW_ID}.collapseAll`,
@@ -223,6 +225,22 @@ export var constants = {
   editEnvironmentInheritanceFailed: "Failed to edit the environment's inheritance.",
   // Environment variable masking
   maskedValuePlaceholder: "••••••••",
+  // Multi-root workspaces (one sessions.json per project)
+  scopeHasNoConfiguration: "no sessions file",
+  scopeUsesWorkspaceConfiguration: "uses {workspace} configuration",
+  scopeWorkspaceTooltip: "Workspace-level configuration, shared by every folder of this multi-root workspace.",
+  inheritedFromLabel: "from {workspace}",
+  inheritedTooltip: "Inherited from the {workspace} sessions.json - edit it there, or define the same name here to override it.",
+  multiRootModeLabel: "Multi-root mode: {mode}",
+  multiRootModeInheritShort: "folders inherit from the workspace-level sessions.json",
+  multiRootModeSeparateShort: "every folder uses only its own sessions.json",
+  multiRootModeSeparateDescription: "Every folder uses only its own sessions.json - nothing is shared between projects.",
+  multiRootModeInheritDescription: "Every folder inherits `variable` and `environments` from the workspace-level sessions.json (key by key, the folder wins), plus `theme`, `keepExistingTerminals`, `noClear`, `joinOperator` and `activeEnvironment` when it leaves them unset. A folder without its own sessions.json falls back to the workspace-level one. Sessions are never merged.",
+  multiRootModeNoWorkspaceFile: "There's no workspace-level sessions.json yet, so nothing is inherited - generate one on the {workspace} node.",
+  multiRootModeNoWorkspaceScope: "This workspace has no workspace-level sessions.json location (it needs a saved .code-workspace file outside the workspace folders), so nothing is inherited.",
+  multiRootModeHowToChange: "Change it with the inline button, by clicking this item (opens Settings - pick the Workspace tab), or in the .code-workspace file under `\"settings\"`: `\"terminal-organizer-vscode.multiRootMode\": \"inherit\"`.",
+  changeMultiRootModeTitle: "Select the multi-root mode (saved in the workspace settings)",
+  changeMultiRootModeFailed: "Failed to change the multi-root mode!",
   toggleEnvironmentVariableMaskFailed: "Failed to toggle masking for the environment variable.",
   // The components
   yesButton: "Yes",

@@ -78,7 +78,11 @@ export var editTerminalActivityAsync = async (terminalTreeItem) => {
     if (!sessionId || terminalArrayIndex === undefined) {
       return;
     }
-    const config = await Configuration.load();
+    const configuration = await Configuration.resolve(terminalTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const config = await configuration.load();
     if (!config?.sessions) {
       return;
     }
@@ -225,7 +229,7 @@ export var editTerminalActivityAsync = async (terminalTreeItem) => {
     } else {
       session[terminalArrayIndex] = updatedTerminal;
     }
-    await Configuration.save({ sessions });
+    await configuration.save({ sessions });
   } catch (error) {
     showErrorMessageWithDetail(constants.editTerminalFailed, error);
   }

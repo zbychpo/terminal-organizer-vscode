@@ -2,7 +2,9 @@ import * as terminalBrowserify from '@vscode-utility/terminal-browserify';
 import * as os from 'os';
 import * as vscode from 'vscode';
 import { Configuration } from '../configuration/configuration';
-import { extCommands, constants } from '../utils/constants';
+import { SessionConfiguration } from '../configuration/interface';
+import { INHERITABLE_OPTION_KEYS, mergeScopeConfigurations } from '../utils/scope-merge';
+import { extCommands, sysCommands, constants } from '../utils/constants';
 import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
 import { applyEnvironmentToTerminals, resolveEnvironmentVariables, resolveMaskedVariableNames } from '../utils/environment-merge';
@@ -17,13 +19,24 @@ var maskEnvValues = (env, maskedNames: Set<string>) => {
   );
 };
 
-var buildResolvedTerminalPreview = (terminal, variable, environmentVariables, globalJoinOperator, maskedNames: Set<string> = new Set()) => {
+var buildResolvedTerminalPreview = (terminal, variable, environmentVariables, globalJoinOperator, maskedNames: Set<string> = new Set(), folderPath?: string) => {
   const terminalWithEnv = applyEnvironmentToTerminals(applyGlobalJoinOperator(terminal, globalJoinOperator), environmentVariables);
   const { commands: commands5, joinOperator, env } = terminalWithEnv;
   const operator = terminalBrowserify.TerminalApi.instance().getJoinOperator(joinOperator);
   const rawCommands = commands5?.join(operator);
-  const resolved = substituteVariablesDeep(resolveVscodeVariablesDeep(terminalWithEnv), variable);
+  const resolved = substituteVariablesDeep(resolveVscodeVariablesDeep(terminalWithEnv, folderPath), variable);
   return { rawCommands, resolvedCommands: resolved.commands?.join(operator), env, resolvedEnv: maskEnvValues(resolved.env, maskedNames) };
+};
+// Tags every item in a scope's subtree with that scope's id, so any command
+// invoked on it acts on the right sessions.json.
+var assignScopeId = (items: TKTreeItem[], scopeId: string) => {
+  items.forEach((item) => {
+    item.scopeId = scopeId;
+    if (item.children) {
+      assignScopeId(item.children, scopeId);
+    }
+  });
+  return items;
 };
 export class TKTreeItem extends vscode.TreeItem {
   children?: any[];
@@ -34,6 +47,9 @@ export class TKTreeItem extends vscode.TreeItem {
   variableName?: string;
   environmentName?: string;
   configValue?: any;
+  // The id of the Configuration (workspace folder / workspace-level scope)
+  // this item belongs to - commands resolve their sessions.json from it.
+  scopeId?: string;
 
   constructor(label, children2?) {
     super(label, children2 === undefined ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed);
@@ -44,6 +60,9 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
   private _onDidChangeTreeData: vscode.EventEmitter<void>;
   onDidChangeTreeData: vscode.Event<void>;
   getData: () => Promise<TKTreeItem[]>;
+  getScopeChildren: (configuration: Configuration) => Promise<TKTreeItem[]>;
+  renderScopeItem: (configuration: Configuration) => Promise<TKTreeItem>;
+  renderMultiRootModeItem: () => Promise<TKTreeItem>;
   renderGroupItem: (params: any) => TKTreeItem;
   renderConfigItem: (params: any) => TKTreeItem;
   renderSessionItem: (params: any) => TKTreeItem;
@@ -56,15 +75,89 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
   constructor() {
     this._onDidChangeTreeData = new vscode.EventEmitter();
     this.onDidChangeTreeData = this._onDidChangeTreeData.event;
+    // A single scope (the usual single-folder workspace) renders its groups
+    // at the top level exactly as before; several scopes (multi-root) get one
+    // top-level node each, with the same groups underneath.
     this.getData = async () => {
-      const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
-      if (!isDefinedSessionFile) {
+      const scopes = Configuration.all();
+      if (scopes.length <= 1) {
+        const configuration = scopes[0];
+        if (!configuration || !(await configuration.isDefinedSessionFile())) {
+          return [];
+        }
+        return await this.getScopeChildren(configuration);
+      }
+      const items = [await this.renderMultiRootModeItem()];
+      for (const configuration of scopes) {
+        items.push(await this.renderScopeItem(configuration));
+      }
+      return items;
+    };
+    // Shows which multiRootMode applies, what it means, and where to change it.
+    this.renderMultiRootModeItem = async () => {
+      const mode = Configuration.getMultiRootMode();
+      const isInherit = mode === "inherit";
+      const workspaceScope = Configuration.getWorkspaceScope();
+      const label = constants.multiRootModeLabel.replace("{mode}", mode);
+      const tooltip = new vscode.MarkdownString(`### **${label}**${os.EOL}${os.EOL}`)
+        .appendMarkdown(`- ${isInherit ? "**inherit** (current)" : "inherit"}: ${constants.multiRootModeInheritDescription}${os.EOL}`)
+        .appendMarkdown(`- ${isInherit ? "separate" : "**separate** (current)"}, default: ${constants.multiRootModeSeparateDescription}${os.EOL}${os.EOL}`);
+      if (isInherit && !workspaceScope) {
+        tooltip.appendMarkdown(`⚠ ${constants.multiRootModeNoWorkspaceScope}${os.EOL}${os.EOL}`);
+      } else if (isInherit && !(await workspaceScope!.isDefinedSessionFile())) {
+        tooltip.appendMarkdown(`⚠ ${constants.multiRootModeNoWorkspaceFile.replace("{workspace}", workspaceScope!.label)}${os.EOL}${os.EOL}`);
+      }
+      tooltip.appendMarkdown(constants.multiRootModeHowToChange);
+      const item = new TKTreeItem(label);
+      item.tooltip = tooltip;
+      item.description = isInherit ? constants.multiRootModeInheritShort : constants.multiRootModeSeparateShort;
+      item.contextValue = "multi-root-mode-context";
+      item.iconPath = new vscode.ThemeIcon(isInherit ? "link" : "files");
+      item.command = {
+        title: "Open the multi-root mode setting",
+        command: sysCommands.openSettings,
+        arguments: [`${Configuration.wsConfigurationSpace}.multiRootMode`]
+      };
+      return item;
+    };
+    this.renderScopeItem = async (configuration) => {
+      const isWorkspace = configuration.kind === "workspace";
+      const hasFile = await configuration.isDefinedSessionFile();
+      const workspaceScope = Configuration.getWorkspaceScope();
+      const usesWorkspaceFallback = !hasFile && !isWorkspace && Configuration.getMultiRootMode() === "inherit" && !!workspaceScope && (await workspaceScope.isDefinedSessionFile());
+      const item = new TKTreeItem(configuration.label, hasFile ? await this.getScopeChildren(configuration) : undefined);
+      if (hasFile) {
+        item.collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
+      }
+      item.description = hasFile
+        ? configuration.relativeSessionFilePath
+        : usesWorkspaceFallback
+          ? constants.scopeUsesWorkspaceConfiguration.replace("{workspace}", workspaceScope!.label)
+          : constants.scopeHasNoConfiguration;
+      item.tooltip = new vscode.MarkdownString(`### **${configuration.label}**${isWorkspace ? " (workspace)" : ""}`)
+        .appendCodeblock(configuration.sessionFilePath)
+        .appendText(isWorkspace ? constants.scopeWorkspaceTooltip : "");
+      item.contextValue = hasFile ? "scope-context" : "scope-empty-context";
+      item.iconPath = new vscode.ThemeIcon(isWorkspace ? "folder-library" : "root-folder");
+      item.scopeId = configuration.id;
+      return item;
+    };
+    this.getScopeChildren = async (configuration) => {
+      const ownConfig = await configuration.load();
+      if (!ownConfig) {
         return [];
       }
-      const config = await Configuration.load();
-      if (!config) {
-        return [];
-      }
+      const inheritedConfig = await configuration.loadInherited();
+      const config: SessionConfiguration = inheritedConfig ? mergeScopeConfigurations(inheritedConfig, ownConfig) : ownConfig;
+      const ownVariable = ownConfig.variable || {};
+      const ownEnvironments = ownConfig.environments || {};
+      const inheritedKeys = inheritedConfig
+        ? INHERITABLE_OPTION_KEYS.filter((key) => !Configuration.isSetOnValue(ownConfig[key]) && Configuration.isSetOnValue(config[key]))
+        : [];
+      const inheritedFrom = Configuration.getWorkspaceScope()?.label;
+      const userConfigKeys = configuration.userConfigKeys;
+      const configItem = (params) => this.renderConfigItem({ ...params, userConfigKeys, inheritedFrom: inheritedKeys.includes(params.label) ? inheritedFrom : undefined });
+      const folderPath = configuration.folderPath;
       const {
         active = "default",
         activateOnStartup = false,
@@ -78,86 +171,86 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
         environments = {},
         activeEnvironment = ""
       } = config;
-      const resolvedVariable = resolveVscodeVariablesDeep(variable);
-      const resolvedActiveEnvironmentVariables = resolveVscodeVariablesDeep(resolveEnvironmentVariables(environments, activeEnvironment));
+      const resolvedVariable = resolveVscodeVariablesDeep(variable, folderPath);
+      const resolvedActiveEnvironmentVariables = resolveVscodeVariablesDeep(resolveEnvironmentVariables(environments, activeEnvironment), folderPath);
       const activeMaskedNames = resolveMaskedVariableNames(environments, activeEnvironment);
-      const killProcess = Configuration.getExperimentalConfig("killProcess");
-      const isWSLSupport = Configuration.getExperimentalConfig("wslSupport");
-      const isQuickRun = Configuration.getExperimentalConfig("quickRun");
-      const isHideCommandsInExplorer = Configuration.getExperimentalConfig(
+      const killProcess = configuration.getExperimentalConfig("killProcess");
+      const isWSLSupport = configuration.getExperimentalConfig("wslSupport");
+      const isQuickRun = configuration.getExperimentalConfig("quickRun");
+      const isHideCommandsInExplorer = configuration.getExperimentalConfig(
         "hideCommandsInExplorerDescriptions"
       );
       const themeService = new terminalBrowserify.ThemeService(theme);
-      return [
+      return assignScopeId([
         this.renderGroupItem({
           label: "Global Configs",
           icon: { id: "wrench" },
           collapsibleState: openNodeOnStart.includes("Global Configs") ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
           children: [
-            this.renderConfigItem({
+            configItem({
               label: "active",
               value: active,
               defaultValue: "default",
               description: "Used to determine which session to use."
             }),
-            this.renderConfigItem({
+            configItem({
               label: "activateOnStartup",
               value: activateOnStartup,
               defaultValue: false,
               description: "Activated the session when Visual Studio Code starts up."
             }),
-            this.renderConfigItem({
+            configItem({
               label: "keepExistingTerminals",
               value: keepExistingTerminals,
               defaultValue: false,
               description: "Keep existing terminals open when a session is executed."
             }),
-            this.renderConfigItem({
+            configItem({
               label: "noClear",
               value: noClear,
               defaultValue: false,
               description: `A Boolean variable indicating whether to execute the clear command during initialization.${os.EOL}If the value is true, the clear command will not be executed upon initialization.${os.EOL}If the value is false, the clear command will be executed.`
             }),
-            this.renderConfigItem({
+            configItem({
               label: "joinOperator",
               value: joinOperator,
               defaultValue: "",
               description: `The default operator used to join a terminal's multiple commands (e.g. ";", "&&", "||") when the terminal doesn't specify its own "joinOperator".${os.EOL}A terminal's own "joinOperator" always overrides this global value. If neither is set, it defaults to "&" on Windows and ";" elsewhere.`
             }),
-            this.renderConfigItem({
+            configItem({
               label: "theme",
               value: theme,
               defaultValue: "default",
               description: "The theme can either automatically select colors/icons or manually."
             }),
-            this.renderConfigItem({
+            configItem({
               label: "openNodeOnStart",
               value: openNodeOnStart,
               defaultValue: [],
               description: "List of node names (e.g. \"Sessions\", \"Variables\", \"Environments\", a session name, an environment name, or a split-terminal group name) that will be expanded by default in this explorer view."
             }),
-            this.renderConfigItem({
+            configItem({
               label: "killProcess",
               value: killProcess,
               defaultValue: false,
               icon: { id: "microscope" },
               description: "Kill the active process when the terminal is closed."
             }),
-            this.renderConfigItem({
+            configItem({
               label: "wslSupport",
               value: isWSLSupport,
               defaultValue: false,
               icon: { id: "microscope" },
               description: "When enable, will convert wsl path to windows path when connect to WSL."
             }),
-            this.renderConfigItem({
+            configItem({
               label: "quickRun",
               value: isQuickRun,
               defaultValue: true,
               icon: { id: "microscope" },
               description: "Add a button to quick active session from the terminal tab."
             }),
-            this.renderConfigItem({
+            configItem({
               label: "hideCommandsInExplorerDescriptions",
               value: isHideCommandsInExplorer,
               defaultValue: false,
@@ -187,6 +280,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
                     environmentVariables: resolvedActiveEnvironmentVariables,
                     maskedNames: activeMaskedNames,
                     joinOperator,
+                    folderPath,
                     openNodeOnStart,
                     children: terminalOrTerminalArray.map(
                       (t) => this.renderTerminalItem({
@@ -198,7 +292,8 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
                         variable: resolvedVariable,
                         environmentVariables: resolvedActiveEnvironmentVariables,
                         maskedNames: activeMaskedNames,
-                        joinOperator
+                        joinOperator,
+                        folderPath
                       })
                     )
                   });
@@ -212,7 +307,8 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
                   variable: resolvedVariable,
                   environmentVariables: resolvedActiveEnvironmentVariables,
                   maskedNames: activeMaskedNames,
-                  joinOperator
+                  joinOperator,
+                  folderPath
                 });
               })
             });
@@ -227,7 +323,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
             ? new vscode.MarkdownString(`### **Variables**${os.EOL}${Object.entries(variable).map(([name, value]) => `- **${name}**: \`${value}\``).join(os.EOL)}`)
             : new vscode.MarkdownString(`### **Variables**${os.EOL}No variables defined yet.`),
           children: Object.entries(variable).map(([name, value]) =>
-            this.renderVariableItem({ name, value })
+            this.renderVariableItem({ name, value, inheritedFrom: Object.prototype.hasOwnProperty.call(ownVariable, name) ? undefined : inheritedFrom })
           )
         }),
         this.renderGroupItem({
@@ -239,10 +335,17 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
             ? new vscode.MarkdownString(`### **Environments**${os.EOL}${Object.keys(environments).map((name) => `- ${name}${name === activeEnvironment ? " (active)" : ""}`).join(os.EOL)}`)
             : new vscode.MarkdownString(`### **Environments**${os.EOL}No environments defined yet.`),
           children: Object.entries(environments).map(([name, value]) =>
-            this.renderEnvironmentItem({ name, value, isActive: name === activeEnvironment, openNodeOnStart, environments })
+            this.renderEnvironmentItem({
+              name,
+              value,
+              isActive: name === activeEnvironment,
+              openNodeOnStart,
+              environments,
+              inheritedFrom: Object.prototype.hasOwnProperty.call(ownEnvironments, name) ? undefined : inheritedFrom
+            })
           )
         })
-      ];
+      ], configuration.id);
     };
     this.renderGroupItem = (params) => {
       const { label, icon, collapsibleState, contextValue, tooltip, children: children2 } = params;
@@ -259,12 +362,12 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       return item;
     };
     this.renderConfigItem = (params) => {
-      const { label, value, defaultValue, icon, children: children2, description } = params;
+      const { label, value, defaultValue, icon, children: children2, description, userConfigKeys = [], inheritedFrom } = params;
       const { id, color } = icon || {};
-      const source = Configuration.userConfigKeys.includes(label) ? "settings.json" : "sessions.json";
+      const source = userConfigKeys.includes(label) ? "settings.json" : "sessions.json";
       const item = new TKTreeItem(label, children2);
-      item.description = `${value}`;
-      item.tooltip = new vscode.MarkdownString(`### **${label}**: \`${value}\``).appendText(description ? `${os.EOL}${description}` : "").appendCodeblock(`Default Value: ${defaultValue}`).appendCodeblock(`Config Source: ${source}`);
+      item.description = inheritedFrom ? `${value} (${constants.inheritedFromLabel.replace("{workspace}", inheritedFrom)})` : `${value}`;
+      item.tooltip = new vscode.MarkdownString(`### **${label}**: \`${value}\``).appendText(description ? `${os.EOL}${description}` : "").appendCodeblock(`Default Value: ${defaultValue}`).appendCodeblock(`Config Source: ${inheritedFrom ? `${inheritedFrom} sessions.json (inherited)` : source}`);
       item.contextValue = "config-context";
       item.configValue = value;
       item.iconPath = new vscode.ThemeIcon(id || "circle-filled", color);
@@ -296,14 +399,14 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       return item;
     };
     this.renderTerminalArrayItem = (params) => {
-      const { terminals, children: children2, sessionId, terminalArrayIndex, variable, environmentVariables, maskedNames, joinOperator, openNodeOnStart = [] } = params;
+      const { terminals, children: children2, sessionId, terminalArrayIndex, variable, environmentVariables, maskedNames, joinOperator, folderPath, openNodeOnStart = [] } = params;
       const label = terminals.map((t) => t.name).join(", ");
       const item = new TKTreeItem(`[${label}]`, children2);
       item.description = "";
       item.tooltip = new vscode.MarkdownString(`### **[${label}]**${os.EOL}`).appendMarkdown(
         terminals.map((terminal) => {
           const { name, disabled } = terminal;
-          const { rawCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables, joinOperator, maskedNames);
+          const { rawCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables, joinOperator, maskedNames, folderPath);
           let section = `- ${name}${disabled ? " (disabled)" : ""}${os.EOL}\`\`\`sh${os.EOL}${rawCommands}${os.EOL}\`\`\`${os.EOL}`;
           if (resolvedCommands && resolvedCommands !== rawCommands) {
             section += `  **Resolved command**${os.EOL}\`\`\`sh${os.EOL}${resolvedCommands}${os.EOL}\`\`\`${os.EOL}`;
@@ -322,11 +425,11 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       return item;
     };
     this.renderTerminalItem = (params) => {
-      const { terminal, theme, sessionId, terminalArrayIndex, terminalGroupName, variable, environmentVariables, maskedNames, joinOperator } = params;
+      const { terminal, theme, sessionId, terminalArrayIndex, terminalGroupName, variable, environmentVariables, maskedNames, joinOperator, folderPath } = params;
       const { name: terminalName = "(empty)" } = terminal;
       const icon = theme.getIcon(terminal.icon, terminalGroupName, terminalName);
       const color = theme.getColor(terminal.color, terminalGroupName, terminalName);
-      const { rawCommands: terminalCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables, joinOperator, maskedNames);
+      const { rawCommands: terminalCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables, joinOperator, maskedNames, folderPath);
       const hideCommandsInExplorerDescriptions = Configuration.getExperimentalConfig("hideCommandsInExplorerDescriptions") ?? false;
       const item = new TKTreeItem(terminalName);
       if (!hideCommandsInExplorerDescriptions) {
@@ -356,17 +459,22 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       return item;
     };
     this.renderVariableItem = (params) => {
-      const { name, value } = params;
+      const { name, value, inheritedFrom } = params;
       const item = new TKTreeItem(name);
-      item.description = value;
+      item.description = inheritedFrom ? `${value} (${constants.inheritedFromLabel.replace("{workspace}", inheritedFrom)})` : value;
       item.tooltip = new vscode.MarkdownString(`### **${name}**`).appendCodeblock(`${value}`);
-      item.contextValue = "variable-context";
+      if (inheritedFrom) {
+        item.tooltip.appendText(constants.inheritedTooltip.replace("{workspace}", inheritedFrom));
+      }
+      // Inherited entries live in the workspace-level sessions.json, so the
+      // edit/remove actions (which act on this scope's own file) are hidden.
+      item.contextValue = inheritedFrom ? "variable-inherited-context" : "variable-context";
       item.iconPath = new vscode.ThemeIcon("symbol-variable");
       item.variableName = name;
       return item;
     };
     this.renderEnvironmentItem = (params) => {
-      const { name, value = {}, isActive, openNodeOnStart = [], environments = {} } = params;
+      const { name, value = {}, isActive, openNodeOnStart = [], environments = {}, inheritedFrom } = params;
       const inherits = Array.isArray(value.inherits) ? value.inherits : [];
       const entries = Object.entries(value).filter(([key]) => key !== "inherits" && key !== "mask");
       const ownKeys = new Set(entries.map(([key]) => key));
@@ -374,9 +482,13 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       const resolvedEntries = Object.entries(resolveEnvironmentVariables(environments, name));
       const item = new TKTreeItem(
         name,
-        entries.map(([key, val]) => this.renderEnvironmentVariableItem({ environmentName: name, name: key, value: val, masked: maskedNames.has(key) }))
+        entries.map(([key, val]) => this.renderEnvironmentVariableItem({ environmentName: name, name: key, value: val, masked: maskedNames.has(key), inherited: !!inheritedFrom }))
       );
-      item.description = [isActive ? "active" : "", inherits.length > 0 ? `inherits: ${inherits.join(", ")}` : ""]
+      item.description = [
+        isActive ? "active" : "",
+        inheritedFrom ? constants.inheritedFromLabel.replace("{workspace}", inheritedFrom) : "",
+        inherits.length > 0 ? `inherits: ${inherits.join(", ")}` : ""
+      ]
         .filter(Boolean)
         .join(" · ");
       item.tooltip = new vscode.MarkdownString(`### **${name}**${isActive ? " (active)" : ""}${os.EOL}`)
@@ -388,19 +500,19 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
                 .join(os.EOL)}`
             : "No environment variables defined yet."
         );
-      item.contextValue = "environment-context";
+      item.contextValue = inheritedFrom ? "environment-inherited-context" : "environment-context";
       item.iconPath = new vscode.ThemeIcon(isActive ? "pass-filled" : "circle-outline", isActive ? new vscode.ThemeColor("terminal.ansiGreen") : undefined);
       item.environmentName = name;
       item.collapsibleState = openNodeOnStart.includes(name) ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed;
       return item;
     };
     this.renderEnvironmentVariableItem = (params) => {
-      const { environmentName, name, value, masked } = params;
+      const { environmentName, name, value, masked, inherited } = params;
       const displayValue = masked ? constants.maskedValuePlaceholder : value;
       const item = new TKTreeItem(name);
       item.description = displayValue;
       item.tooltip = new vscode.MarkdownString(`### **${name}**`).appendCodeblock(`${displayValue}`);
-      item.contextValue = "environment-variable-context";
+      item.contextValue = inherited ? "environment-variable-inherited-context" : "environment-variable-context";
       item.iconPath = new vscode.ThemeIcon(masked ? "eye-closed" : "symbol-variable");
       item.environmentName = environmentName;
       item.variableName = name;

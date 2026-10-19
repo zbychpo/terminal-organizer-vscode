@@ -5,14 +5,18 @@ import { constants } from '../utils/constants';
 import { updateStatusBar } from '../utils/show-status-bar';
 import { showErrorMessageWithDetail, showTextDocument, getSessionQuickPickItems } from '../utils/utils';
 
-export var removeAsync = async () => {
+export var removeAsync = async (target?) => {
   try {
-    const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
+    const configuration = await Configuration.resolve(target);
+    if (!configuration) {
+      return;
+    }
+    const isDefinedSessionFile = await configuration.isDefinedSessionFile();
     if (!isDefinedSessionFile) {
       vscode.window.showWarningMessage(constants.notExistConfiguration);
       return;
     }
-    const config = await Configuration.load();
+    const config = await configuration.load();
     if (!config) {
       vscode.window.showWarningMessage(constants.notExistConfiguration);
       return;
@@ -47,10 +51,10 @@ export var removeAsync = async () => {
       newestConfiguration.active = constants.defaultSession;
       updateStatusBar(newestConfiguration.active);
     }
-    await Configuration.save(newestConfiguration);
+    await configuration.save(newestConfiguration);
     vscode.window.showInformationMessage(constants.removeSessionSuccess, constants.viewConfigurationButton).then((selection) => {
       if (selection === constants.viewConfigurationButton) {
-        showTextDocument(Configuration.sessionFilePath);
+        showTextDocument(configuration.sessionFilePath);
       }
     });
   } catch (error) {

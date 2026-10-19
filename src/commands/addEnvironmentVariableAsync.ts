@@ -10,7 +10,11 @@ export var addEnvironmentVariableAsync = async (environmentTreeItem) => {
     if (!environmentName) {
       return;
     }
-    const currentContent = await Configuration.getSessionConfiguration();
+    const configuration = await Configuration.resolve(environmentTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const currentContent = await configuration.getSessionConfiguration();
     const environments = currentContent.environments || {};
     const environment = environments[environmentName] || {};
     const name = await vscode.window.showInputBox({
@@ -40,7 +44,7 @@ export var addEnvironmentVariableAsync = async (environmentTreeItem) => {
     if (value === undefined) {
       return;
     }
-    await Configuration.writeSessionFile({
+    await configuration.writeSessionFile({
       ...currentContent,
       environments: { ...environments, [environmentName]: { ...environment, [name]: value } }
     });

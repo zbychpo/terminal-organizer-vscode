@@ -9,13 +9,17 @@ export var editVariableAsync = async (variableTreeItem) => {
     if (!variableName) {
       return;
     }
-    const currentContent = await Configuration.getSessionConfiguration();
+    const configuration = await Configuration.resolve(variableTreeItem);
+    if (!configuration) {
+      return;
+    }
+    const currentContent = await configuration.getSessionConfiguration();
     const variable = currentContent.variable || {};
     const value = await pickVariableValue(variable[variableName] ?? "");
     if (value === undefined) {
       return;
     }
-    await Configuration.writeSessionFile({
+    await configuration.writeSessionFile({
       ...currentContent,
       variable: { ...variable, [variableName]: value }
     });

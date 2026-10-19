@@ -123,8 +123,8 @@ export var mergeImportedTerminals = (previousItems, importedItems) => {
   const newItems = importedItems.filter((item) => !consumedNames.has(item.name));
   return merged.concat(newItems);
 };
-var chooseSessionName = async () => {
-  const config = await Configuration.load();
+var chooseSessionName = async (configuration: Configuration) => {
+  const config = await configuration.load();
   if (!config.sessions) {
     config.sessions = { default: [] };
   }
@@ -198,21 +198,27 @@ export var importAsync = async (fileType) => {
       const item = { name, cwd, commands: commands5 };
       return item;
     });
-    let sessionName = await chooseSessionName();
+    // Imports into the project (scope) the picked file belongs to, e.g.
+    // backend/package.json -> backend's sessions.json in a multi-root workspace.
+    const configuration = Configuration.findScopeByPath(selectedFilePath) || (await Configuration.resolve());
+    if (!configuration) {
+      return;
+    }
+    let sessionName = await chooseSessionName(configuration);
     if (!sessionName) {
       return;
     }
-    const isDefinedSessionFile = await Configuration.isDefinedSessionFile();
+    const isDefinedSessionFile = await configuration.isDefinedSessionFile();
     if (!isDefinedSessionFile) {
-      await Configuration.save({ ...configurationTemplate, sessions: { default: [] } });
+      await configuration.save({ ...configurationTemplate, sessions: { default: [] } });
     }
-    const config = await Configuration.load();
+    const config = await configuration.load();
     if (!config.sessions) {
       config.sessions = { default: [] };
     }
     const previousTerminalItems = config.sessions[sessionName] || [];
     config.sessions[sessionName] = mergeImportedTerminals(previousTerminalItems, terminalItems);
-    await Configuration.save(config);
+    await configuration.save(config);
   } catch (error) {
     showErrorMessageWithDetail(constants.importFileFailed.replace("{fileType}", fileType), error);
   }

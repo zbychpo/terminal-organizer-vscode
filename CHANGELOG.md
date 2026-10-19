@@ -1,3 +1,16 @@
+## Unreleased
+
+Added support for **multi-root workspaces** ([#1](https://github.com/zbychpo/terminal-organizer-vscode/issues/1)):
+
+- Every workspace folder now has its own sessions file, looked up at `.vscode/sessions.json` and then `sessions.json` (configurable through the new `terminal-organizer-vscode.sessionFileLocations` setting). Previously only the first folder's file was read.
+- A multi-root workspace can also have a workspace-level sessions file next to its `.code-workspace` file.
+- The Activity Bar shows one node per project, with inline **Active Session**/**Open Configuration** buttons, or **Generate Configuration** for a project without a file. A single-folder workspace looks the same as before.
+- Commands run from the palette or the view title use the active editor's project or let you pick one. **Import** targets the imported file's project. **Run Terminal by Name** searches every project and accepts an optional `project` argument.
+- A relative `cwd` and a bare `${workspaceFolder}` now resolve against the terminal's own project folder, and a terminal without a `cwd` in the second or later folder starts in that folder.
+- New `terminal-organizer-vscode.multiRootMode` setting: `separate` (default) keeps every folder independent, while `inherit` lets folders inherit `variable`, `environments` and unset options from the workspace-level file, with a folder that has no file falling back to it. The current mode is shown at the top of the Activity Bar tree in a multi-root workspace. Hover over it for an explanation, click it to open the setting, or use the inline **Change Multi-root Mode** button, which saves the mode in the workspace settings.
+- Session-related settings are now resource-scoped, so a folder's `.vscode/settings.json` can override them.
+- Startup migration and `activateOnStartup` run per project. Only the first project to auto-activate closes existing terminals.
+
 ## 1.0.16
 
 Added a batch of Activity Bar and configuration improvements:
