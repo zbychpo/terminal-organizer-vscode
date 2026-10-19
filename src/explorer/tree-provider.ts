@@ -38,6 +38,14 @@ var assignScopeId = (items: TKTreeItem[], scopeId: string) => {
   });
   return items;
 };
+// The terminal's commands joined the way they'll be sent (its own
+// joinOperator, else the global one, else the platform default) - without the
+// variable resolution buildResolvedTerminalPreview does, so it's cheap enough
+// for every item's description.
+var getRawCommands = (terminal, globalJoinOperator) => {
+  const joinOperator = Object.prototype.hasOwnProperty.call(terminal, "joinOperator") || !globalJoinOperator ? terminal.joinOperator : globalJoinOperator;
+  return terminal.commands?.join(terminalBrowserify.TerminalApi.instance().getJoinOperator(joinOperator));
+};
 export class TKTreeItem extends vscode.TreeItem {
   children?: any[];
   source?: string;
@@ -50,6 +58,9 @@ export class TKTreeItem extends vscode.TreeItem {
   // The id of the Configuration (workspace folder / workspace-level scope)
   // this item belongs to - commands resolve their sessions.json from it.
   scopeId?: string;
+  // Builds the tooltip on hover (TreeProvider.resolveTreeItem) instead of on
+  // every refresh - for tooltips that need full variable resolution.
+  tooltipFactory?: () => vscode.MarkdownString;
 
   constructor(label, children2?) {
     super(label, children2 === undefined ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed);
@@ -79,7 +90,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
     // A single scope (the usual single-folder workspace) renders its groups
     // at the top level exactly as before; several scopes (multi-root) get one
     // top-level node each, with the same groups underneath.
-    this.getData = async () => {
+    this.getData = () => Configuration.withReadBatch(async () => {
       const scopes = Configuration.all();
       if (scopes.length <= 1) {
         const configuration = scopes[0];
@@ -96,7 +107,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       }
       items.push(await this.renderGlobalVariablesGroup());
       return items;
-    };
+    });
     // The user's global variables (user settings), at the bottom of the tree.
     // Each entry notes the projects that override it with their own variable.
     this.renderGlobalVariablesGroup = async () => {
@@ -316,6 +327,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
               label: sessionName,
               value: session,
               openNodeOnStart,
+              hideCommands: isHideCommandsInExplorer,
               children: session.map((terminalOrTerminalArray, index) => {
                 if (Array.isArray(terminalOrTerminalArray)) {
                   const terminalGroupName = terminalOrTerminalArray?.[0].name;
@@ -340,7 +352,8 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
                         environmentVariables: resolvedActiveEnvironmentVariables,
                         maskedNames: activeMaskedNames,
                         joinOperator,
-                        folderPath
+                        folderPath,
+                        hideCommands: isHideCommandsInExplorer
                       })
                     )
                   });
@@ -355,7 +368,8 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
                   environmentVariables: resolvedActiveEnvironmentVariables,
                   maskedNames: activeMaskedNames,
                   joinOperator,
-                  folderPath
+                  folderPath,
+                  hideCommands: isHideCommandsInExplorer
                 });
               })
             });
@@ -431,8 +445,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       return item;
     };
     this.renderSessionItem = (params) => {
-      const { label, value, children: children2, openNodeOnStart = [] } = params;
-      const hideCommandsInExplorerDescriptions = Configuration.getExperimentalConfig("hideCommandsInExplorerDescriptions") ?? false;
+      const { label, value, children: children2, openNodeOnStart = [], hideCommands: hideCommandsInExplorerDescriptions = false } = params;
       const terminalNames = value.map((s) => Array.isArray(s) ? `[${s.map((v) => v.name).join(", ")}]` : s.name);
       const item = new TKTreeItem(label, children2);
       if (!hideCommandsInExplorerDescriptions) {
@@ -450,7 +463,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       const label = terminals.map((t) => t.name).join(", ");
       const item = new TKTreeItem(`[${label}]`, children2);
       item.description = "";
-      item.tooltip = new vscode.MarkdownString(`### **[${label}]**${os.EOL}`).appendMarkdown(
+      item.tooltipFactory = () => new vscode.MarkdownString(`### **[${label}]**${os.EOL}`).appendMarkdown(
         terminals.map((terminal) => {
           const { name, disabled } = terminal;
           const { rawCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables, joinOperator, maskedNames, folderPath);
@@ -472,26 +485,27 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       return item;
     };
     this.renderTerminalItem = (params) => {
-      const { terminal, theme, sessionId, terminalArrayIndex, terminalGroupName, variable, environmentVariables, maskedNames, joinOperator, folderPath } = params;
+      const { terminal, theme, sessionId, terminalArrayIndex, terminalGroupName, variable, environmentVariables, maskedNames, joinOperator, folderPath, hideCommands = false } = params;
       const { name: terminalName = "(empty)" } = terminal;
       const icon = theme.getIcon(terminal.icon, terminalGroupName, terminalName);
       const color = theme.getColor(terminal.color, terminalGroupName, terminalName);
-      const { rawCommands: terminalCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables, joinOperator, maskedNames, folderPath);
-      const hideCommandsInExplorerDescriptions = Configuration.getExperimentalConfig("hideCommandsInExplorerDescriptions") ?? false;
       const item = new TKTreeItem(terminalName);
-      if (!hideCommandsInExplorerDescriptions) {
-        item.description = terminalCommands;
+      if (!hideCommands) {
+        item.description = getRawCommands(terminal, joinOperator);
       }
-      const tooltip = new vscode.MarkdownString(
-        `### **${terminalName}**${terminal.disabled ? " (disabled)" : ""}`
-      ).appendCodeblock(`${terminalCommands}`, "sh");
-      if (resolvedCommands && resolvedCommands !== terminalCommands) {
-        tooltip.appendMarkdown(`${os.EOL}**Resolved command**`).appendCodeblock(`${resolvedCommands}`, "sh");
-      }
-      if (env && Object.keys(env).length > 0) {
-        tooltip.appendMarkdown(`${os.EOL}**env** (resolved)`).appendCodeblock(JSON.stringify(resolvedEnv, null, 2), "json");
-      }
-      item.tooltip = tooltip;
+      item.tooltipFactory = () => {
+        const { rawCommands: terminalCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables, joinOperator, maskedNames, folderPath);
+        const tooltip = new vscode.MarkdownString(
+          `### **${terminalName}**${terminal.disabled ? " (disabled)" : ""}`
+        ).appendCodeblock(`${terminalCommands}`, "sh");
+        if (resolvedCommands && resolvedCommands !== terminalCommands) {
+          tooltip.appendMarkdown(`${os.EOL}**Resolved command**`).appendCodeblock(`${resolvedCommands}`, "sh");
+        }
+        if (env && Object.keys(env).length > 0) {
+          tooltip.appendMarkdown(`${os.EOL}**env** (resolved)`).appendCodeblock(JSON.stringify(resolvedEnv, null, 2), "json");
+        }
+        return tooltip;
+      };
       item.contextValue = "terminal-context";
       item.iconPath = new vscode.ThemeIcon(icon?.id || "terminal", color);
       item.sessionId = sessionId;
@@ -526,7 +540,6 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       const entries = Object.entries(value).filter(([key]) => key !== "inherits" && key !== "mask");
       const ownKeys = new Set(entries.map(([key]) => key));
       const maskedNames = resolveMaskedVariableNames(environments, name);
-      const resolvedEntries = Object.entries(resolveEnvironmentVariables(environments, name));
       const item = new TKTreeItem(
         name,
         entries.map(([key, val]) => this.renderEnvironmentVariableItem({ environmentName: name, name: key, value: val, masked: maskedNames.has(key), inherited: !!inheritedFrom }))
@@ -538,7 +551,9 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       ]
         .filter(Boolean)
         .join(" · ");
-      item.tooltip = new vscode.MarkdownString(`### **${name}**${isActive ? " (active)" : ""}${os.EOL}`)
+      item.tooltipFactory = () => {
+        const resolvedEntries = Object.entries(resolveEnvironmentVariables(environments, name));
+        return new vscode.MarkdownString(`### **${name}**${isActive ? " (active)" : ""}${os.EOL}`)
         .appendMarkdown(inherits.length > 0 ? `**Inherits** (last wins): ${inherits.join(" → ")}${os.EOL}${os.EOL}` : "")
         .appendMarkdown(
           resolvedEntries.length > 0
@@ -547,6 +562,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
                 .join(os.EOL)}`
             : "No environment variables defined yet."
         );
+      };
       item.contextValue = inheritedFrom ? "environment-inherited-context" : "environment-context";
       item.iconPath = new vscode.ThemeIcon(isActive ? "pass-filled" : "circle-outline", isActive ? new vscode.ThemeColor("terminal.ansiGreen") : undefined);
       item.environmentName = name;
@@ -571,6 +587,12 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
   }
   getTreeItem(element) {
     return element;
+  }
+  resolveTreeItem(item: vscode.TreeItem, element: TKTreeItem) {
+    if (item.tooltip === undefined && element.tooltipFactory) {
+      item.tooltip = element.tooltipFactory();
+    }
+    return item;
   }
   async getChildren(element) {
     if (element === undefined) {

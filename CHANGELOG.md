@@ -1,3 +1,13 @@
+## 1.0.18
+
+Performance and variable improvements:
+
+- Variables can reference other variables (`"javaBin": "${variable:jdk}/bin"`), to any depth. Circular references are left unresolved instead of looping.
+- The Activity Bar tree reads each sessions file once per refresh instead of several times (the workspace-level file used to be re-read once per folder), and checking whether a file exists no longer costs a separate file-system call. This is most noticeable over Remote SSH, WSL and dev containers.
+- Bursts of file-watcher and settings events are collapsed into a single tree refresh.
+- Terminal and environment tooltips (the resolved commands, `env` and inheritance) are now built only when you hover over the item, not for every item on every refresh.
+- Minimum VS Code version raised to 1.66 (needed for lazily built tooltips).
+
 ## 1.0.17
 
 Added **global variables**: a new **Global Variables** group at the bottom of the Activity Bar tree manages variables saved in your user settings (`terminal-organizer-vscode.globalVariables`). They are available as `${variable:NAME}` in every project of every workspace, and a project's own variable with the same name wins. Each entry shows which projects override it.

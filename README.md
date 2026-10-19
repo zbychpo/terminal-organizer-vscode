@@ -368,6 +368,8 @@ Define named string values once in a top-level `variable` object, then reuse the
 }
 ```
 
+A variable's value can reference other variables (including global ones), to any depth: with `"jdk": "C:/tools/jdk-21"` and `"javaBin": "${variable:jdk}/bin"`, `${variable:javaBin}` resolves to `C:/tools/jdk-21/bin`. A circular reference (`a` -> `b` -> `a`) is left unresolved instead of looping.
+
 Manage variables from the Activity Bar's **Variables** section: the **+** button on the group adds one (with a folder-picker button to fill in a file/folder path instead of typing it), and each variable has inline **edit**/**remove** actions.
 
 The group also has an **import** (cloud-download) button that reads a `.env`-style file (comments, `export` prefixes, and single/double-quoted values are all handled) and adds every `KEY=value` line as a variable. After importing, you're asked for an environment name (pre-filled from the file name) - if you provide one, an entry is added to `environments` with the same keys pointing back at the imported variables via `${variable:NAME}`, so you get a ready-to-activate environment instead of two copies of the same values:

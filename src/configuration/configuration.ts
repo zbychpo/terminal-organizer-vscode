@@ -24,6 +24,14 @@ export class Configuration {
   static nonSessionSettingKeys = ["sessionFileLocations", "multiRootMode", "globalVariables"];
   private static scopes: Configuration[] = [];
   private static watchRoots: string[] = [];
+  // Raw text of each sessions file (undefined = missing/unreadable), keyed by
+  // normalized path - only kept while a read batch is open (a tree refresh,
+  // see withReadBatch), so one refresh reads each file once instead of once
+  // per folder/group, while commands always read the current file from disk.
+  // Our own writes and watcher events drop the entry even mid-batch.
+  private static fileCache = new Map<string, string | undefined>();
+  private static readBatchDepth = 0;
+  static refreshDebounceMs = 150;
 
   readonly id: string;
   readonly kind: ConfigScopeKind;
@@ -248,8 +256,34 @@ export class Configuration {
   static getExperimentalConfig<T = any>(key: string): T | undefined {
     return vscode.workspace.getConfiguration(this.wsConfigurationSpace).get<T>(key);
   }
+  // Bursts of events (one save often fires 2-3 watcher events, and a command
+  // that writes a file and a setting fires both a file and a configuration
+  // event) collapse into a single rediscover/refresh after refreshDebounceMs.
   static watch(onConfigChange: () => void): vscode.Disposable {
     let fileWatchers: vscode.Disposable[] = [];
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let pending: "refresh" | "discover" | "rewatch" | undefined;
+    const rank = { refresh: 1, discover: 2, rewatch: 3 };
+    const schedule = (kind: "refresh" | "discover" | "rewatch") => {
+      if (!pending || rank[kind] > rank[pending]) {
+        pending = kind;
+      }
+      if (timer) {
+        clearTimeout(timer);
+      }
+      timer = setTimeout(async () => {
+        const kindToRun = pending;
+        pending = undefined;
+        timer = undefined;
+        if (kindToRun === "discover" || kindToRun === "rewatch") {
+          await this.discover();
+        }
+        if (kindToRun === "rewatch") {
+          rewatch();
+        }
+        onConfigChange();
+      }, this.refreshDebounceMs);
+    };
     const rewatch = () => {
       fileWatchers.forEach((d) => d.dispose());
       const pattern = `{${this.getSessionFileLocations().join(",")}}`;
@@ -257,46 +291,84 @@ export class Configuration {
         const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(rootPath, pattern));
         // Creating/deleting a file can change which location a scope resolves
         // to (or make a workspace-level scope appear), so rediscover first.
-        const onStructuralChange = async () => {
-          await this.discover();
-          onConfigChange();
+        const onEvent = (kind: "refresh" | "discover") => (uri: vscode.Uri) => {
+          this.invalidateFileCache(uri.fsPath);
+          schedule(kind);
         };
         return vscode.Disposable.from(
           watcher,
-          watcher.onDidCreate(onStructuralChange),
-          watcher.onDidDelete(onStructuralChange),
-          watcher.onDidChange(() => onConfigChange())
+          watcher.onDidCreate(onEvent("discover")),
+          watcher.onDidDelete(onEvent("discover")),
+          watcher.onDidChange(onEvent("refresh"))
         );
       });
     };
-    const rediscover = async () => {
-      await this.discover();
-      rewatch();
-      onConfigChange();
-    };
     rewatch();
     const subscriptions = [
-      vscode.workspace.onDidChangeWorkspaceFolders(() => rediscover()),
+      vscode.workspace.onDidChangeWorkspaceFolders(() => schedule("rewatch")),
       vscode.workspace.onDidChangeConfiguration((e) => {
         const ns = this.wsConfigurationSpace;
         if (e.affectsConfiguration(`${ns}.sessionFileLocations`) || e.affectsConfiguration(`${ns}.wslSupport`)) {
-          rediscover();
+          schedule("rewatch");
         } else if (e.affectsConfiguration(ns)) {
-          onConfigChange();
+          schedule("refresh");
         }
       })
     ];
-    return vscode.Disposable.from(...subscriptions, { dispose: () => fileWatchers.forEach((d) => d.dispose()) });
+    return vscode.Disposable.from(...subscriptions, {
+      dispose: () => {
+        fileWatchers.forEach((d) => d.dispose());
+        if (timer) {
+          clearTimeout(timer);
+        }
+      }
+    });
   }
   private static async findSessionFilePath(rootPath: string) {
     const locations = this.getSessionFileLocations();
     for (const location of locations) {
       const candidate = path.join(rootPath, location);
-      if (await fsBrowserify.fs.existAsync(candidate)) {
+      if ((await this.readFileCached(candidate)) !== undefined) {
         return candidate;
       }
     }
     return path.join(rootPath, locations[0]);
+  }
+  // One readFile instead of the old exists + readFile pair; served from the
+  // cache while a read batch is open.
+  static async readFileCached(filePath: string): Promise<string | undefined> {
+    const key = this.normalizePath(filePath);
+    if (this.readBatchDepth > 0 && this.fileCache.has(key)) {
+      return this.fileCache.get(key);
+    }
+    let text: string | undefined;
+    try {
+      text = await fsBrowserify.fs.readFileAsync(filePath);
+    } catch {
+      text = undefined;
+    }
+    if (this.readBatchDepth > 0) {
+      this.fileCache.set(key, text);
+    }
+    return text;
+  }
+  static async withReadBatch<T>(fn: () => Promise<T>): Promise<T> {
+    this.readBatchDepth++;
+    try {
+      return await fn();
+    } finally {
+      this.readBatchDepth--;
+      if (this.readBatchDepth === 0) {
+        this.fileCache.clear();
+      }
+    }
+  }
+  static invalidateFileCache(filePath?: string) {
+    if (filePath) {
+      this.fileCache.delete(this.normalizePath(filePath));
+    } else {
+      this.fileCache.clear();
+    }
   }
   private static getWorkspaceFileDirPath(): string | undefined {
     const { workspaceFile } = vscode.workspace;
@@ -386,7 +458,7 @@ export class Configuration {
     return this.getWorkspaceConfiguration().get<T>(key);
   }
   async isDefinedSessionFile() {
-    return await fsBrowserify.fs.existAsync(this.sessionFilePath);
+    return (await Configuration.readFileCached(this.sessionFilePath)) !== undefined;
   }
   static isSetOnValue(value) {
     if (value === null || value === undefined) {
@@ -444,7 +516,12 @@ export class Configuration {
     }
   }
   async writeSessionFile(newestConfig) {
-    await fsBrowserify.fs.writeFileAsync(this.sessionFilePath, JSON.stringify(newestConfig, null, getTabWidth()));
+    const text = JSON.stringify(newestConfig, null, getTabWidth());
+    try {
+      await fsBrowserify.fs.writeFileAsync(this.sessionFilePath, text);
+    } finally {
+      Configuration.invalidateFileCache(this.sessionFilePath);
+    }
   }
   // Folder-scoped settings (e.g. <folder>/.vscode/settings.json) override the
   // workspace's for settings declared with "scope": "resource".
@@ -458,13 +535,14 @@ export class Configuration {
     }
     return path.join(this.vscodeDirPath, "settings.json");
   }
+  // Parses the cached text on every call, so callers always get a fresh
+  // object they can mutate (commands splice sessions, load() adds settings).
   async getSessionConfiguration(): Promise<SessionConfiguration> {
-    const sessionFileExist = await fsBrowserify.fs.existAsync(this.sessionFilePath);
-    if (!sessionFileExist) {
+    const content = await Configuration.readFileCached(this.sessionFilePath);
+    if (content === undefined) {
       return {};
     }
     try {
-      const content = await fsBrowserify.fs.readFileAsync(this.sessionFilePath);
       return JSON.parse(content) as SessionConfiguration;
     } catch {
       return {};

@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { substituteVariable, substituteVariablesDeep } from '../../utils/variable-substitution';
+import { substituteVariable, substituteVariablesDeep, resolveVariableReferences } from '../../utils/variable-substitution';
 import { resolveVscodeVariable, resolveVscodeVariablesDeep } from '../../utils/vscode-variable-resolver';
 import { applyEnvironmentToTerminals, resolveEnvironmentVariables, hasCircularInheritance, resolveMaskedVariableNames } from '../../utils/environment-merge';
 import { swapAdjacent } from '../../utils/reorder';
@@ -729,5 +729,30 @@ suite('Terminal Organizer Extension Test Suite', () => {
         assert.ok(setting, 'globalVariables setting is missing');
         assert.strictEqual(setting.scope, 'application');
         assert.deepStrictEqual(setting.default, {});
+    });
+
+    test('resolveVariableReferences resolves variables that reference other variables, to any depth', () => {
+        const resolved = resolveVariableReferences({
+            javaBin: '${variable:javaHome}/bin',
+            javaHome: '${variable:tools}/jdk',
+            tools: 'C:/tools',
+            plain: 'x'
+        });
+        assert.deepStrictEqual(resolved, { javaBin: 'C:/tools/jdk/bin', javaHome: 'C:/tools/jdk', tools: 'C:/tools', plain: 'x' });
+    });
+
+    test('resolveVariableReferences leaves cyclic and unknown references as-is instead of looping', () => {
+        const resolved = resolveVariableReferences({ a: '${variable:b}!', b: '${variable:a}?', c: '${variable:missing}', self: '${variable:self}' });
+        assert.strictEqual(resolved.c, '${variable:missing}');
+        assert.strictEqual(resolved.self, '${variable:self}');
+        assert.ok(resolved.a.includes('${variable:'), 'a cycle keeps a literal reference');
+        assert.ok(resolved.b.includes('${variable:'), 'a cycle keeps a literal reference');
+    });
+
+    test('substituteVariablesDeep applies nested variable references to session fields', () => {
+        const session = [{ name: 'build', cwd: '${variable:javaBin}', commands: ['${variable:javaBin}/java -version'] }];
+        const result = substituteVariablesDeep(session, { javaHome: '/opt/jdk', javaBin: '${variable:javaHome}/bin' });
+        assert.strictEqual(result[0].cwd, '/opt/jdk/bin');
+        assert.deepStrictEqual(result[0].commands, ['/opt/jdk/bin/java -version']);
     });
 });
