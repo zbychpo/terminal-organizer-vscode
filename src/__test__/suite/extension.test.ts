@@ -12,7 +12,7 @@ import { buildCommands as buildTasksCommands } from '../../commands/modules/task
 import { applyTerminalFieldUpdate, describeField, validateJsonStringArray, validateJsonStringRecord } from '../../commands/editTerminalActivityAsync';
 import { toggleMask } from '../../commands/toggleEnvironmentVariableMaskAsync';
 import { configurationTemplate } from '../../configuration/template';
-import { mergeScopeConfigurations, resolveRelativeCwdDeep } from '../../utils/scope-merge';
+import { applyGlobalVariables, mergeScopeConfigurations, resolveRelativeCwdDeep } from '../../utils/scope-merge';
 
 const EXTENSION_ID = 'zbigniewpowroznik.terminal-organizer-vscode';
 const LATEST_SCHEMA_URI = 'terminal-organizer-vscode-schema:/v11/terminal-organizer-vscode.json';
@@ -711,5 +711,23 @@ suite('Terminal Organizer Extension Test Suite', () => {
         const folder = path.join(os.tmpdir(), 'frontend');
         assert.strictEqual(resolveVscodeVariable('${workspaceFolder}/src', folder), `${folder}/src`);
         assert.strictEqual(resolveVscodeVariable('${workspaceFolderBasename}', folder), 'frontend');
+    });
+
+    test('applyGlobalVariables puts global variables under a project\'s own ones without touching anything else', () => {
+        const own = { theme: 'tribe', variable: { prj: '/own' }, sessions: { default: [] } };
+        const merged = applyGlobalVariables(own, { javaHome: '/opt/java', prj: '/global' });
+        assert.deepStrictEqual(merged.variable, { javaHome: '/opt/java', prj: '/own' });
+        assert.strictEqual(merged.theme, 'tribe');
+        assert.deepStrictEqual(own.variable, { prj: '/own' }, 'the configuration must not be mutated');
+        assert.deepStrictEqual(applyGlobalVariables({ sessions: {} }, { a: '1' }).variable, { a: '1' });
+        assert.strictEqual(applyGlobalVariables(own, {}), own);
+    });
+
+    test('globalVariables is contributed as an application-scoped (user-only) setting', () => {
+        const ext = vscode.extensions.getExtension(EXTENSION_ID);
+        const setting = ext!.packageJSON.contributes.configuration.properties['terminal-organizer-vscode.globalVariables'];
+        assert.ok(setting, 'globalVariables setting is missing');
+        assert.strictEqual(setting.scope, 'application');
+        assert.deepStrictEqual(setting.default, {});
     });
 });

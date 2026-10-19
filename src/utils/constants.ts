@@ -55,7 +55,10 @@ export var extCommands = {
   removeEnvironmentVariableActivity: "terminal-organizer-vscode.remove-environment-variable-activity",
   editEnvironmentInheritanceActivity: "terminal-organizer-vscode.edit-environment-inheritance-activity",
   toggleEnvironmentVariableMaskActivity: "terminal-organizer-vscode.toggle-environment-variable-mask-activity",
-  changeMultiRootModeActivity: "terminal-organizer-vscode.change-multi-root-mode-activity"
+  changeMultiRootModeActivity: "terminal-organizer-vscode.change-multi-root-mode-activity",
+  addGlobalVariableActivity: "terminal-organizer-vscode.add-global-variable-activity",
+  editGlobalVariableActivity: "terminal-organizer-vscode.edit-global-variable-activity",
+  removeGlobalVariableActivity: "terminal-organizer-vscode.remove-global-variable-activity"
 };
 export var ACTIVITY_VIEW_ID = "terminalOrganizerActivityView";
 export var sysCommands = {
@@ -241,6 +244,18 @@ export var constants = {
   multiRootModeHowToChange: "Change it with the inline button, by clicking this item (opens Settings - pick the Workspace tab), or in the .code-workspace file under `\"settings\"`: `\"terminal-organizer-vscode.multiRootMode\": \"inherit\"`.",
   changeMultiRootModeTitle: "Select the multi-root mode (saved in the workspace settings)",
   changeMultiRootModeFailed: "Failed to change the multi-root mode!",
+  // Global variables (user settings, shared by every project)
+  globalVariablesGroupLabel: "Global Variables",
+  globalVariablesGroupDescription: "user settings · every project",
+  globalVariablesTooltip: "Available as `${variable:NAME}` in every project of every workspace on this machine. Saved in your user settings (`terminal-organizer-vscode.globalVariables`), not in any sessions.json. A project's own variable with the same name wins.",
+  globalVariablesEmpty: "No global variables defined yet.",
+  globalVariableOverriddenIn: "overridden in: {projects}",
+  enterGlobalVariableNameTitle: "Enter the global variable name (available in every project)",
+  addGlobalVariableSuccess: "The global variable was successfully added!",
+  addGlobalVariableFailed: "Failed to add the global variable.",
+  editGlobalVariableFailed: "Failed to edit the global variable.",
+  removeGlobalVariableSuccess: "The global variable was successfully removed!",
+  removeGlobalVariableFailed: "Failed to remove the global variable.",
   toggleEnvironmentVariableMaskFailed: "Failed to toggle masking for the environment variable.",
   // The components
   yesButton: "Yes",

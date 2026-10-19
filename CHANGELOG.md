@@ -1,4 +1,6 @@
-## Unreleased
+## 1.0.17
+
+Added **global variables**: a new **Global Variables** group at the bottom of the Activity Bar tree manages variables saved in your user settings (`terminal-organizer-vscode.globalVariables`). They are available as `${variable:NAME}` in every project of every workspace, and a project's own variable with the same name wins. Each entry shows which projects override it.
 
 Added support for **multi-root workspaces** ([#1](https://github.com/zbychpo/terminal-organizer-vscode/issues/1)):
 

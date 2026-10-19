@@ -30,6 +30,17 @@ export var mergeScopeConfigurations = (base, own) => {
   return merged;
 };
 
+// Puts the user's global variables (terminal-organizer-vscode.globalVariables
+// in the user settings) under a configuration's own "variable": they're
+// available to every project, and any project-level variable with the same
+// name wins.
+export var applyGlobalVariables = (config, globalVariables) => {
+  if (!globalVariables || Object.keys(globalVariables).length <= 0) {
+    return config;
+  }
+  return { ...(config || {}), variable: { ...globalVariables, ...(config?.variable || {}) } };
+};
+
 // Makes every relative "cwd" in a session (standalone terminals and
 // split-terminal groups alike) absolute against the scope's folder, so a
 // terminal defined in a second workspace folder doesn't resolve its cwd

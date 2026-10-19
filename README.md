@@ -390,6 +390,24 @@ The group also has an **import** (cloud-download) button that reads a `.env`-sty
 
 Session fields (and `variable` values themselves) also understand a few of VS Code's own [predefined variables](https://code.visualstudio.com/docs/editor/variables-reference), such as `${workspaceFolder}`, `${workspaceFolderBasename}`, `${userHome}`, `${pathSeparator}`/`${/}`, and `${env:NAME}` - see the [full configuration guide](docs/manage/configuration.md) for details.
 
+### Global variables ✨
+
+Variables you need in every project (a JDK path, a tools directory, ...) can be defined once in the **Global Variables** group at the bottom of the Activity Bar tree. Use the inline **Add Global Variable** button on the group, and the **Edit**/**Remove** buttons on each entry.
+
+They are saved in your **user** settings, not in any `sessions.json`:
+
+```json
+"terminal-organizer-vscode.globalVariables": {
+    "javaHome": "C:/Java/jdk-21",
+    "tools": "${userHome}/tools"
+}
+```
+
+- Use them like project variables: `${variable:javaHome}` works in commands, `cwd`, `env`, environments, etc. of every project in every workspace.
+- A project's own `variable` with the same name wins. In a multi-root workspace with `multiRootMode: "inherit"` the order is: global → workspace-level → folder. An entry that some project overrides shows "overridden in: …" in the tree.
+- `${workspaceFolder}` inside a global variable resolves to the folder of the project that uses it.
+- The setting is application-scoped, so it can't be set in workspace settings or committed with a project.
+
 ### Environments ✨
 
 Define named sets of environment variables once in a top-level `environments` object, then mark one of them `activeEnvironment`. The active environment is automatically merged into **every** terminal's `env` right before a session is activated - no need to repeat `JAVA_HOME`/`MAVEN_HOME`/`PATH` on each terminal that needs them:

@@ -3,7 +3,7 @@ import * as os from 'os';
 import * as vscode from 'vscode';
 import { Configuration } from '../configuration/configuration';
 import { SessionConfiguration } from '../configuration/interface';
-import { INHERITABLE_OPTION_KEYS, mergeScopeConfigurations } from '../utils/scope-merge';
+import { INHERITABLE_OPTION_KEYS, applyGlobalVariables, mergeScopeConfigurations } from '../utils/scope-merge';
 import { extCommands, sysCommands, constants } from '../utils/constants';
 import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
@@ -63,6 +63,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
   getScopeChildren: (configuration: Configuration) => Promise<TKTreeItem[]>;
   renderScopeItem: (configuration: Configuration) => Promise<TKTreeItem>;
   renderMultiRootModeItem: () => Promise<TKTreeItem>;
+  renderGlobalVariablesGroup: () => Promise<TKTreeItem>;
   renderGroupItem: (params: any) => TKTreeItem;
   renderConfigItem: (params: any) => TKTreeItem;
   renderSessionItem: (params: any) => TKTreeItem;
@@ -82,16 +83,57 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       const scopes = Configuration.all();
       if (scopes.length <= 1) {
         const configuration = scopes[0];
+        // Without a sessions file the view stays empty so its welcome
+        // content ("Generate Configuration") shows.
         if (!configuration || !(await configuration.isDefinedSessionFile())) {
           return [];
         }
-        return await this.getScopeChildren(configuration);
+        return [...(await this.getScopeChildren(configuration)), await this.renderGlobalVariablesGroup()];
       }
       const items = [await this.renderMultiRootModeItem()];
       for (const configuration of scopes) {
         items.push(await this.renderScopeItem(configuration));
       }
+      items.push(await this.renderGlobalVariablesGroup());
       return items;
+    };
+    // The user's global variables (user settings), at the bottom of the tree.
+    // Each entry notes the projects that override it with their own variable.
+    this.renderGlobalVariablesGroup = async () => {
+      const globalVariables = Configuration.getGlobalVariables();
+      const overriddenIn: Record<string, string[]> = {};
+      for (const configuration of Configuration.all()) {
+        if (!(await configuration.isDefinedSessionFile())) {
+          continue;
+        }
+        const ownVariable = (await configuration.getSessionConfiguration()).variable || {};
+        Object.keys(globalVariables)
+          .filter((name) => Object.prototype.hasOwnProperty.call(ownVariable, name))
+          .forEach((name) => (overriddenIn[name] = [...(overriddenIn[name] || []), configuration.label]));
+      }
+      const entries = Object.entries(globalVariables);
+      const item = this.renderGroupItem({
+        label: constants.globalVariablesGroupLabel,
+        icon: { id: "globe" },
+        collapsibleState: vscode.TreeItemCollapsibleState.Expanded,
+        contextValue: "global-variables-group-context",
+        tooltip: new vscode.MarkdownString(`### **${constants.globalVariablesGroupLabel}**${os.EOL}${constants.globalVariablesTooltip}${os.EOL}${os.EOL}`).appendMarkdown(
+          entries.length > 0 ? entries.map(([name, value]) => `- **${name}**: \`${value}\``).join(os.EOL) : constants.globalVariablesEmpty
+        ),
+        children: entries.map(([name, value]) => {
+          const child = this.renderVariableItem({ name, value });
+          child.contextValue = "global-variable-context";
+          child.iconPath = new vscode.ThemeIcon("symbol-variable");
+          if (overriddenIn[name]) {
+            const note = constants.globalVariableOverriddenIn.replace("{projects}", overriddenIn[name].join(", "));
+            child.description = `${value} (${note})`;
+            (child.tooltip as vscode.MarkdownString).appendText(note);
+          }
+          return child;
+        })
+      });
+      item.description = constants.globalVariablesGroupDescription;
+      return item;
     };
     // Shows which multiRootMode applies, what it means, and where to change it.
     this.renderMultiRootModeItem = async () => {
@@ -148,7 +190,12 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
         return [];
       }
       const inheritedConfig = await configuration.loadInherited();
-      const config: SessionConfiguration = inheritedConfig ? mergeScopeConfigurations(inheritedConfig, ownConfig) : ownConfig;
+      // Global variables only feed the resolved previews here; they're listed
+      // once, in the "Global Variables" group at the bottom of the tree.
+      const config: SessionConfiguration = applyGlobalVariables(
+        inheritedConfig ? mergeScopeConfigurations(inheritedConfig, ownConfig) : ownConfig,
+        Configuration.getGlobalVariables()
+      );
       const ownVariable = ownConfig.variable || {};
       const ownEnvironments = ownConfig.environments || {};
       const inheritedKeys = inheritedConfig

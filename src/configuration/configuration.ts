@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { SessionConfiguration } from './interface';
 import { getWorkspaceRootPath } from '../utils/get-workspace';
-import { mergeScopeConfigurations } from '../utils/scope-merge';
+import { applyGlobalVariables, mergeScopeConfigurations } from '../utils/scope-merge';
 import { getTabWidth } from '../utils/utils';
 
 export type ConfigScopeKind = "workspace" | "folder";
@@ -21,7 +21,7 @@ export class Configuration {
   static defaultSessionFileLocations = [".vscode/sessions.json", "sessions.json"];
   // Extension settings that control scope discovery rather than describing a
   // session file - kept out of the settings.json -> sessions.json merge in load().
-  static nonSessionSettingKeys = ["sessionFileLocations", "multiRootMode"];
+  static nonSessionSettingKeys = ["sessionFileLocations", "multiRootMode", "globalVariables"];
   private static scopes: Configuration[] = [];
   private static watchRoots: string[] = [];
 
@@ -120,6 +120,20 @@ export class Configuration {
   }
   static getMultiRootMode(): MultiRootMode {
     return this.getExperimentalConfig<MultiRootMode>("multiRootMode") === "inherit" ? "inherit" : "separate";
+  }
+  // The user's global variables (user settings only - the setting is
+  // application-scoped), shared by every project in every workspace.
+  static getGlobalVariables(): Record<string, string> {
+    const value = vscode.workspace.getConfiguration(this.wsConfigurationSpace).inspect<Record<string, string>>("globalVariables")?.globalValue;
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return {};
+    }
+    return Object.fromEntries(Object.entries(value).filter(([, v]) => typeof v === "string")) as Record<string, string>;
+  }
+  static async setGlobalVariables(variables: Record<string, string>) {
+    await vscode.workspace
+      .getConfiguration(this.wsConfigurationSpace)
+      .update("globalVariables", Object.keys(variables).length > 0 ? variables : undefined, vscode.ConfigurationTarget.Global);
   }
   static getSessionFileLocations(): string[] {
     const locations = this.getExperimentalConfig<string[]>("sessionFileLocations");
@@ -353,12 +367,13 @@ export class Configuration {
     return await workspaceScope.load();
   }
   // What actually applies when spawning terminals: load() plus anything
-  // inherited from the workspace-level configuration. Never save() this back -
-  // it would copy inherited values into this scope's own file.
+  // inherited from the workspace-level configuration, plus the user's global
+  // variables underneath everything. Never save() this back - it would copy
+  // inherited/global values into this scope's own file.
   async loadEffective(): Promise<SessionConfiguration> {
     const own = await this.load();
     const inherited = await this.loadInherited();
-    return inherited ? mergeScopeConfigurations(inherited, own) : own;
+    return applyGlobalVariables(inherited ? mergeScopeConfigurations(inherited, own) : own, Configuration.getGlobalVariables());
   }
   async save(newestConfig) {
     const isDefinedSessionFile = await this.isDefinedSessionFile();

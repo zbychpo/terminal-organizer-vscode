@@ -11,6 +11,9 @@ import { addEnvironmentAsync } from './commands/addEnvironmentAsync';
 import { addEnvironmentVariableAsync } from './commands/addEnvironmentVariableAsync';
 import { changeMultiRootModeAsync } from './commands/changeMultiRootModeAsync';
 import { clearAllAsync } from './commands/clearAllAsync';
+import { addGlobalVariableAsync } from './commands/addGlobalVariableAsync';
+import { editGlobalVariableAsync } from './commands/editGlobalVariableAsync';
+import { removeGlobalVariableAsync } from './commands/removeGlobalVariableAsync';
 import { editConfigAsync } from './commands/editConfigAsync';
 import { editVariableAsync } from './commands/editVariableAsync';
 import { editEnvironmentVariableAsync } from './commands/editEnvironmentVariableAsync';
@@ -239,6 +242,15 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand(extCommands.editEnvironmentInheritanceActivity, async (environmentTreeItem) => {
       await editEnvironmentInheritanceAsync(environmentTreeItem);
+    }),
+    vscode.commands.registerCommand(extCommands.addGlobalVariableActivity, async () => {
+      await addGlobalVariableAsync();
+    }),
+    vscode.commands.registerCommand(extCommands.editGlobalVariableActivity, async (variableTreeItem) => {
+      await editGlobalVariableAsync(variableTreeItem);
+    }),
+    vscode.commands.registerCommand(extCommands.removeGlobalVariableActivity, async (variableTreeItem) => {
+      await removeGlobalVariableAsync(variableTreeItem);
     }),
     vscode.commands.registerCommand(extCommands.changeMultiRootModeActivity, async () => {
       await changeMultiRootModeAsync();
