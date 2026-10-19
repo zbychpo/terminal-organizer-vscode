@@ -201,12 +201,11 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
         return [];
       }
       const inheritedConfig = await configuration.loadInherited();
-      // Global variables only feed the resolved previews here; they're listed
-      // once, in the "Global Variables" group at the bottom of the tree.
-      const config: SessionConfiguration = applyGlobalVariables(
-        inheritedConfig ? mergeScopeConfigurations(inheritedConfig, ownConfig) : ownConfig,
-        Configuration.getGlobalVariables()
-      );
+      const config: SessionConfiguration = inheritedConfig ? mergeScopeConfigurations(inheritedConfig, ownConfig) : ownConfig;
+      // Global variables only feed the resolved previews (resolvedVariable);
+      // they're listed once, in the "Global Variables" group at the bottom of
+      // the tree - never in a project's own "Variables" group.
+      const previewVariable = applyGlobalVariables(config, Configuration.getGlobalVariables()).variable || {};
       const ownVariable = ownConfig.variable || {};
       const ownEnvironments = ownConfig.environments || {};
       const inheritedKeys = inheritedConfig
@@ -229,7 +228,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
         environments = {},
         activeEnvironment = ""
       } = config;
-      const resolvedVariable = resolveVscodeVariablesDeep(variable, folderPath);
+      const resolvedVariable = resolveVscodeVariablesDeep(previewVariable, folderPath);
       const resolvedActiveEnvironmentVariables = resolveVscodeVariablesDeep(resolveEnvironmentVariables(environments, activeEnvironment), folderPath);
       const activeMaskedNames = resolveMaskedVariableNames(environments, activeEnvironment);
       const killProcess = configuration.getExperimentalConfig("killProcess");

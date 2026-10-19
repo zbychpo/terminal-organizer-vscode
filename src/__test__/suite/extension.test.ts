@@ -12,6 +12,8 @@ import { buildCommands as buildTasksCommands } from '../../commands/modules/task
 import { applyTerminalFieldUpdate, describeField, validateJsonStringArray, validateJsonStringRecord } from '../../commands/editTerminalActivityAsync';
 import { toggleMask } from '../../commands/toggleEnvironmentVariableMaskAsync';
 import { configurationTemplate } from '../../configuration/template';
+import { Configuration } from '../../configuration/configuration';
+import { TreeProvider } from '../../explorer/tree-provider';
 import { applyGlobalVariables, mergeScopeConfigurations, resolveRelativeCwdDeep } from '../../utils/scope-merge';
 
 const EXTENSION_ID = 'zbigniewpowroznik.terminal-organizer-vscode';
@@ -754,5 +756,53 @@ suite('Terminal Organizer Extension Test Suite', () => {
         const result = substituteVariablesDeep(session, { javaHome: '/opt/jdk', javaBin: '${variable:javaHome}/bin' });
         assert.strictEqual(result[0].cwd, '/opt/jdk/bin');
         assert.deepStrictEqual(result[0].commands, ['/opt/jdk/bin/java -version']);
+    });
+
+    test('globalVariables can be written to and read back from the user settings', async () => {
+        const ext = vscode.extensions.getExtension(EXTENSION_ID);
+        await ext!.activate();
+        const config = () => vscode.workspace.getConfiguration('terminal-organizer-vscode');
+        const previous = config().inspect('globalVariables')?.globalValue;
+        try {
+            await config().update('globalVariables', { testVar: 'C:/test' }, vscode.ConfigurationTarget.Global);
+            assert.deepStrictEqual(config().inspect('globalVariables')?.globalValue, { testVar: 'C:/test' });
+        } finally {
+            await config().update('globalVariables', previous, vscode.ConfigurationTarget.Global);
+        }
+    });
+
+    test('A global variable is listed only in "Global Variables", not in the project "Variables" group (also after the project variable is removed)', async () => {
+        const workspaceFolder = vscode.workspace.workspaceFolders![0];
+        const sessionFilePath = path.join(workspaceFolder.uri.fsPath, '.vscode', 'sessions.json');
+        const original = fs.existsSync(sessionFilePath) ? fs.readFileSync(sessionFilePath, 'utf8') : undefined;
+        const config = () => vscode.workspace.getConfiguration('terminal-organizer-vscode');
+        const previousGlobals = config().inspect('globalVariables')?.globalValue;
+        const labelsOf = (items: any[] | undefined) => (items || []).map((i) => `${i.label}`);
+        try {
+            fs.mkdirSync(path.dirname(sessionFilePath), { recursive: true });
+            fs.writeFileSync(sessionFilePath, JSON.stringify({ sessions: { default: [] }, variable: { javaHome21: 'C:/own', other: 'x' } }));
+            await config().update('globalVariables', { javaHome21: 'C:/global' }, vscode.ConfigurationTarget.Global);
+            await Configuration.initialize();
+            const provider = new TreeProvider();
+
+            let top = await provider.getChildren(undefined);
+            let variables = top.find((i: any) => i.label === 'Variables');
+            assert.deepStrictEqual(labelsOf(variables?.children).sort(), ['javaHome21', 'other']);
+
+            // Remove the project's own javaHome21 - the global one must not take its place in the project group.
+            fs.writeFileSync(sessionFilePath, JSON.stringify({ sessions: { default: [] }, variable: { other: 'x' } }));
+            top = await provider.getChildren(undefined);
+            variables = top.find((i: any) => i.label === 'Variables');
+            assert.deepStrictEqual(labelsOf(variables?.children), ['other']);
+            const globals = top.find((i: any) => i.label === 'Global Variables');
+            assert.deepStrictEqual(labelsOf(globals?.children), ['javaHome21']);
+        } finally {
+            await config().update('globalVariables', previousGlobals, vscode.ConfigurationTarget.Global);
+            if (original === undefined) {
+                fs.rmSync(sessionFilePath, { force: true });
+            } else {
+                fs.writeFileSync(sessionFilePath, original);
+            }
+        }
     });
 });

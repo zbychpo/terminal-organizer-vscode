@@ -1,3 +1,7 @@
+## 1.0.19
+
+Fixed the Activity Bar showing global variables as if they were a project's own variables. When a variable existed both in a project and in **Global Variables**, removing it from the project still left it in the project's **Variables** group. The entry there was the global value, shown with edit/remove buttons that had no effect. A project's **Variables** group now lists only the variables from its own sessions file (plus, in `inherit` mode, the ones inherited from the workspace-level file), and global variables appear only in the **Global Variables** group. Terminals and the resolved-command tooltips still use global variables as before.
+
 ## 1.0.18
 
 Performance and variable improvements:
