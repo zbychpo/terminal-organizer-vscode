@@ -9,6 +9,7 @@ import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
 import { applyEnvironmentToTerminals, resolveEnvironmentVariables } from '../utils/environment-merge';
 import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
 import { resolveRelativeCwdDeep } from '../utils/scope-merge';
+import { logLaunch } from '../utils/launch-log';
 
 // target: the folder Uri when run from the Explorer's context menu (also used
 // as the fallback cwd), a scope tree item, or undefined.
@@ -55,18 +56,19 @@ export var activeAsync = async (target?) => {
       return;
     }
     const activeEnvironmentVariables = resolveEnvironmentVariables(environments, activeEnvironment);
+    const enabledItems = selectedSession.map((sessionItem) => {
+      if (Array.isArray(sessionItem)) {
+        const filtered = sessionItem.filter((i) => !i.disabled);
+        return filtered.length <= 0 ? undefined : filtered;
+      } else {
+        return sessionItem.disabled ? undefined : sessionItem;
+      }
+    }).filter(Boolean);
     const activatedSession = resolveRelativeCwdDeep(substituteVariablesDeep(
       resolveVscodeVariablesDeep(
         applyEnvironmentToTerminals(
           applyGlobalJoinOperator(
-            selectedSession.map((sessionItem) => {
-              if (Array.isArray(sessionItem)) {
-                const filtered = sessionItem.filter((i) => !i.disabled);
-                return filtered.length <= 0 ? undefined : filtered;
-              } else {
-                return sessionItem.disabled ? undefined : sessionItem;
-              }
-            }).filter(Boolean),
+            enabledItems,
             joinOperator
           ),
           activeEnvironmentVariables
@@ -93,6 +95,7 @@ export var activeAsync = async (target?) => {
         }
         progress.report({ message: "Validating the configuration file..." });
         const flatActivatedSession = activatedSession.flat();
+        const cwdFallbacks = new Set<number>();
         for (let i = 0; i < flatActivatedSession.length; i++) {
           const sessionItem = flatActivatedSession[i];
           progress.report({ message: `Checking that "${sessionItem.cwd}" exists...` });
@@ -100,10 +103,22 @@ export var activeAsync = async (target?) => {
           if (cwdPath) {
             sessionItem.cwdPath = cwdPath;
           } else {
+            if (sessionItem.cwd) {
+              cwdFallbacks.add(i);
+            }
             sessionItem.cwd = workspacePath;
             sessionItem.cwdPath = workspacePath;
           }
         }
+        await logLaunch({
+          configuration,
+          title: `session "${selectedSessionKey}"`,
+          effectiveConfig: config,
+          rawTerminals: enabledItems.flat(),
+          resolvedTerminals: flatActivatedSession,
+          cwdFallbacks,
+          fallbackCwd: workspacePath
+        });
         const themeService = new terminalBrowserify.ThemeService(theme);
         activatedSession.forEach((sessionItem) => {
           if (Array.isArray(sessionItem)) {

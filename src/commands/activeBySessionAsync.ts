@@ -9,6 +9,7 @@ import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
 import { applyEnvironmentToTerminals, resolveEnvironmentVariables } from '../utils/environment-merge';
 import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
 import { resolveRelativeCwdDeep } from '../utils/scope-merge';
+import { logLaunch } from '../utils/launch-log';
 
 export var activeBySessionAsync = async (configuration: Configuration, activeSession, isSaveActiveSession = false, forceKeepExistingTerminals = false) => {
   try {
@@ -36,18 +37,19 @@ export var activeBySessionAsync = async (configuration: Configuration, activeSes
       return;
     }
     const activeEnvironmentVariables = resolveEnvironmentVariables(environments, activeEnvironment);
+    const enabledItems = selectedSession.map((sessionItem) => {
+      if (Array.isArray(sessionItem)) {
+        const filtered = sessionItem.filter((i) => !i.disabled);
+        return filtered.length <= 0 ? undefined : filtered;
+      } else {
+        return sessionItem.disabled ? undefined : sessionItem;
+      }
+    }).filter(Boolean);
     const activatedSession = resolveRelativeCwdDeep(substituteVariablesDeep(
       resolveVscodeVariablesDeep(
         applyEnvironmentToTerminals(
           applyGlobalJoinOperator(
-            selectedSession.map((sessionItem) => {
-              if (Array.isArray(sessionItem)) {
-                const filtered = sessionItem.filter((i) => !i.disabled);
-                return filtered.length <= 0 ? undefined : filtered;
-              } else {
-                return sessionItem.disabled ? undefined : sessionItem;
-              }
-            }).filter(Boolean),
+            enabledItems,
             joinOperator
           ),
           activeEnvironmentVariables
@@ -82,6 +84,13 @@ export var activeBySessionAsync = async (configuration: Configuration, activeSes
             sessionItem.cwdPath = cwdPath;
           }
         }
+        await logLaunch({
+          configuration,
+          title: `session "${activeSession}"`,
+          effectiveConfig: config,
+          rawTerminals: enabledItems.flat(),
+          resolvedTerminals: flatActivatedSession
+        });
         const themeService = new terminalBrowserify.ThemeService(theme);
         activatedSession.forEach((sessionItem) => {
           if (Array.isArray(sessionItem)) {

@@ -1,3 +1,15 @@
+## 1.0.20
+
+Added a **launch log**. Turn on `terminal-organizer-vscode.logLaunches`, and every session or terminal launch is written to the **Terminal Organizer** output channel (open it with **Show Launch Log** in the Activity Bar's `...` menu or the command palette). Each entry shows:
+
+- the project, its sessions file and, in a multi-root workspace, the `multiRootMode`;
+- the options used (`theme`, `keepExistingTerminals`, `noClear`, `joinOperator`) and where each came from: the project `sessions.json`, the workspace-level `sessions.json`, `settings.json`, or the default;
+- the active environment and its `inherits` chain;
+- for each terminal: `cwd` and commands before and after resolution (including a `cwd` that doesn't exist and what was used instead), the shell, every variable it uses with its value and source (project, workspace-level or global, and which one it overrides), and every `env` key with its source (the terminal's own `env` or the environment that supplies it);
+- warnings for placeholders that couldn't be resolved, such as a misspelled `${variable:...}` or a circular reference.
+
+Masked environment values, and the variables that feed them, are shown as `••••••••`. The minimum VS Code version is now 1.74 (needed for the log output channel).
+
 ## 1.0.19
 
 Fixed the Activity Bar showing global variables as if they were a project's own variables. When a variable existed both in a project and in **Global Variables**, removing it from the project still left it in the project's **Variables** group. The entry there was the global value, shown with edit/remove buttons that had no effect. A project's **Variables** group now lists only the variables from its own sessions file (plus, in `inherit` mode, the ones inherited from the workspace-level file), and global variables appear only in the **Global Variables** group. Terminals and the resolved-command tooltips still use global variables as before.

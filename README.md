@@ -569,6 +569,28 @@ This will remove the command text from the explorer tree items, showing only the
 
 ## Troubleshooting
 
+### See what was launched, and where each value came from
+
+Turn on `"terminal-organizer-vscode.logLaunches": true`. Every session or terminal launch is then logged to the **Terminal Organizer** output channel (**Terminal Organizer: Show Launch Log**, also in the Activity Bar's `...` menu):
+
+```text
+Launching session "dev" in project "backend"
+  sessions file:   C:\repo\backend\.vscode\sessions.json
+  options:         theme=tribe (project .vscode/sessions.json), keepExistingTerminals=false (settings.json), noClear= (default), joinOperator=&& (workspace-level sessions.json (repo))
+  environment:     "dev" (activeEnvironment from project .vscode/sessions.json) → inherits: base
+  ▸ terminal "api"
+      cwd:         ${variable:apiRoot}/src → C:\repo\backend\src
+      commands:    npm run ${variable:script} → npm run dev
+      variables:
+        apiRoot = C:\repo\backend   ← project .vscode/sessions.json
+        script = dev   ← global variables (user settings)
+      env:
+        TOKEN = ••••••••   ← environment "base" (via dev)
+        PORT = 3000   ← terminal's own env
+```
+
+Unresolved placeholders (such as a misspelled `${variable:...}`) and a `cwd` that doesn't exist are reported as warnings. Masked environment values, and any variable that feeds one, stay masked.
+
 ### `posix_spawnp failed` terminal launch error
 
 If you see this VS Code message:

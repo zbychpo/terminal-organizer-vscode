@@ -58,7 +58,8 @@ export var extCommands = {
   changeMultiRootModeActivity: "terminal-organizer-vscode.change-multi-root-mode-activity",
   addGlobalVariableActivity: "terminal-organizer-vscode.add-global-variable-activity",
   editGlobalVariableActivity: "terminal-organizer-vscode.edit-global-variable-activity",
-  removeGlobalVariableActivity: "terminal-organizer-vscode.remove-global-variable-activity"
+  removeGlobalVariableActivity: "terminal-organizer-vscode.remove-global-variable-activity",
+  showLog: "terminal-organizer-vscode.show-log"
 };
 export var ACTIVITY_VIEW_ID = "terminalOrganizerActivityView";
 export var sysCommands = {

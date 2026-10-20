@@ -14,6 +14,7 @@ import { toggleMask } from '../../commands/toggleEnvironmentVariableMaskAsync';
 import { configurationTemplate } from '../../configuration/template';
 import { Configuration } from '../../configuration/configuration';
 import { TreeProvider } from '../../explorer/tree-provider';
+import { findEnvironmentSource, getLogChannel, logLaunch } from '../../utils/launch-log';
 import { applyGlobalVariables, mergeScopeConfigurations, resolveRelativeCwdDeep } from '../../utils/scope-merge';
 
 const EXTENSION_ID = 'zbigniewpowroznik.terminal-organizer-vscode';
@@ -797,6 +798,83 @@ suite('Terminal Organizer Extension Test Suite', () => {
             const globals = top.find((i: any) => i.label === 'Global Variables');
             assert.deepStrictEqual(labelsOf(globals?.children), ['javaHome21']);
         } finally {
+            await config().update('globalVariables', previousGlobals, vscode.ConfigurationTarget.Global);
+            if (original === undefined) {
+                fs.rmSync(sessionFilePath, { force: true });
+            } else {
+                fs.writeFileSync(sessionFilePath, original);
+            }
+        }
+    });
+
+    test('findEnvironmentSource follows the same precedence as resolveEnvironmentVariables', () => {
+        const environments = {
+            base: { A: 'base', B: 'base' },
+            extra: { B: 'extra', C: 'extra' },
+            dev: { inherits: ['base', 'extra'], C: 'dev' }
+        };
+        assert.strictEqual(findEnvironmentSource(environments, 'dev', 'A'), 'base');
+        assert.strictEqual(findEnvironmentSource(environments, 'dev', 'B'), 'extra', 'a later "inherits" entry wins');
+        assert.strictEqual(findEnvironmentSource(environments, 'dev', 'C'), 'dev', 'own keys win');
+        assert.strictEqual(findEnvironmentSource(environments, 'dev', 'missing'), undefined);
+        assert.strictEqual(findEnvironmentSource({ a: { inherits: ['b'] }, b: { inherits: ['a'] } }, 'a', 'X'), undefined, 'cycle-safe');
+    });
+
+    test('logLaunch writes launch parameters with their sources when logLaunches is on, and keeps masked values masked', async () => {
+        const workspaceFolder = vscode.workspace.workspaceFolders![0];
+        const sessionFilePath = path.join(workspaceFolder.uri.fsPath, '.vscode', 'sessions.json');
+        const original = fs.existsSync(sessionFilePath) ? fs.readFileSync(sessionFilePath, 'utf8') : undefined;
+        const config = () => vscode.workspace.getConfiguration('terminal-organizer-vscode');
+        const previousLog = config().inspect('logLaunches')?.globalValue;
+        const previousGlobals = config().inspect('globalVariables')?.globalValue;
+        const channel = getLogChannel() as any;
+        const lines: string[] = [];
+        const saved = { appendLine: channel.appendLine, info: channel.info, warn: channel.warn };
+        channel.appendLine = (line: string) => lines.push(line);
+        channel.info = (line: string) => lines.push(`INFO ${line}`);
+        channel.warn = (line: string) => lines.push(`WARN ${line}`);
+        try {
+            fs.mkdirSync(path.dirname(sessionFilePath), { recursive: true });
+            const terminal = { name: 'api', cwd: '${variable:root}', commands: ['run ${variable:tool} ${variable:typo}'], env: { PORT: '3000' } };
+            fs.writeFileSync(sessionFilePath, JSON.stringify({
+                theme: 'neon',
+                activeEnvironment: 'dev',
+                variable: { root: workspaceFolder.uri.fsPath, secret: 's3cr3t' },
+                environments: { base: { TOKEN: '${variable:secret}', mask: ['TOKEN'] }, dev: { inherits: ['base'], MODE: 'dev' } },
+                sessions: { default: [terminal] }
+            }));
+            await config().update('globalVariables', { tool: 'C:/tools/x' }, vscode.ConfigurationTarget.Global);
+            await config().update('logLaunches', true, vscode.ConfigurationTarget.Global);
+            await Configuration.initialize();
+            const configuration = Configuration.all()[0];
+            const effectiveConfig = await configuration.loadEffective();
+            const resolved = {
+                name: 'api',
+                cwd: workspaceFolder.uri.fsPath,
+                cwdPath: workspaceFolder.uri.fsPath,
+                commands: ['run C:/tools/x ${variable:typo}'],
+                env: { TOKEN: 's3cr3t', MODE: 'dev', PORT: '3000' }
+            };
+            await logLaunch({ configuration, title: 'session "default"', effectiveConfig, rawTerminals: [terminal], resolvedTerminals: [resolved] });
+            const text = lines.join('\n');
+            assert.ok(text.includes('INFO Launching session "default"'), text);
+            assert.ok(/theme=neon \(project/.test(text), 'theme source should be the project sessions.json');
+            assert.ok(/tool = C:\/tools\/x\s+← global variables/.test(text), 'global variable source');
+            assert.ok(/root = .*← project/.test(text), 'project variable source');
+            assert.ok(/typo\s+← NOT DEFINED/.test(text), 'undefined variable is reported');
+            assert.ok(/MODE = dev\s+← environment "dev"/.test(text), 'own environment key');
+            assert.ok(/TOKEN = ••••••••\s+← environment "base" \(via dev\)/.test(text), 'inherited masked key');
+            assert.ok(/PORT = 3000\s+← terminal's own env/.test(text), 'terminal env key');
+            assert.ok(!text.includes('s3cr3t'), 'masked values (and the variables feeding them) must not leak into the log');
+            assert.ok(text.includes('WARN terminal "api": unresolved placeholders ${variable:typo}'), 'unresolved placeholder warning');
+
+            lines.length = 0;
+            await config().update('logLaunches', false, vscode.ConfigurationTarget.Global);
+            await logLaunch({ configuration, title: 'session "default"', effectiveConfig, rawTerminals: [terminal], resolvedTerminals: [resolved] });
+            assert.strictEqual(lines.length, 0, 'nothing is logged when logLaunches is off');
+        } finally {
+            Object.assign(channel, saved);
+            await config().update('logLaunches', previousLog, vscode.ConfigurationTarget.Global);
             await config().update('globalVariables', previousGlobals, vscode.ConfigurationTarget.Global);
             if (original === undefined) {
                 fs.rmSync(sessionFilePath, { force: true });

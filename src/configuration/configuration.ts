@@ -21,7 +21,7 @@ export class Configuration {
   static defaultSessionFileLocations = [".vscode/sessions.json", "sessions.json"];
   // Extension settings that control scope discovery rather than describing a
   // session file - kept out of the settings.json -> sessions.json merge in load().
-  static nonSessionSettingKeys = ["sessionFileLocations", "multiRootMode", "globalVariables"];
+  static nonSessionSettingKeys = ["sessionFileLocations", "multiRootMode", "globalVariables", "logLaunches"];
   private static scopes: Configuration[] = [];
   private static watchRoots: string[] = [];
   // Raw text of each sessions file (undefined = missing/unreadable), keyed by

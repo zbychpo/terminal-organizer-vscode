@@ -9,6 +9,7 @@ import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
 import { applyEnvironmentToTerminals, resolveEnvironmentVariables } from '../utils/environment-merge';
 import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
 import { resolveRelativeCwdDeep } from '../utils/scope-merge';
+import { logLaunch } from '../utils/launch-log';
 
 export var activeByTerminalAsync = async (configuration: Configuration, sessionId, terminalArrayIndex, terminalItemName) => {
   try {
@@ -38,6 +39,13 @@ export var activeByTerminalAsync = async (configuration: Configuration, sessionI
         tm.cwdPath = cwdPath;
       }
     }
+    await logLaunch({
+      configuration,
+      title: Array.isArray(foundTerminal) ? `split-terminal group (session "${sessionId}")` : `terminal "${foundTerminal.name}" (session "${sessionId}")`,
+      effectiveConfig: config,
+      rawTerminals: Array.isArray(foundTerminal) ? foundTerminal : [foundTerminal],
+      resolvedTerminals: terminals
+    });
     if (Array.isArray(terminal)) {
       const terminals2 = terminal.filter((t) => !t.disabled);
       if (terminals2.length <= 0) {
