@@ -145,6 +145,9 @@ export var constants = {
   editTerminalEnvInvalid: "Must be a JSON object whose values are strings, e.g. {\"NAME\": \"value\"}.",
   editTerminalClearOption: "(clear / use default)",
   editTerminalFailed: "Failed to edit the terminal.",
+  editTerminalDescriptionHint: "$(edit) Edit the terminal description, then save (Ctrl+S) to apply it.",
+  editTerminalDescriptionSaved: "$(check) Description of \"{name}\" saved.",
+  editTerminalDescriptionTerminalGone: "The terminal \"{name}\" was renamed, moved or removed - the description wasn't saved.",
   // Save the terminal session
   selectSessionSaveTitle: "Select a session to override or create a new session:",
   selectSessionSavePlaceHolder: "Select session...",
@@ -269,6 +272,7 @@ export var constants = {
 };
 export var terminalFieldDescriptions = {
   name: "A human-readable string which will be used to represent the terminal in the UI.",
+  description: "Free-text notes about the terminal (can span several lines), shown in its tooltip. Opens in an editor - save to apply.",
   commands: "The list of commands run in the terminal.",
   cwd: "A path or Uri for the current working directory to be used for the terminal.",
   color: "The id of the color. The available colors are listed in https://code.visualstudio.com/docs/getstarted/theme-color-reference.",

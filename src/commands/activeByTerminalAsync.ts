@@ -34,6 +34,8 @@ export var activeByTerminalAsync = async (configuration: Configuration, sessionI
     const terminals = Array.isArray(terminal) ? terminal : [terminal];
     for (let i = 0; i < terminals.length; i++) {
       const tm = terminals[i];
+      // Notes for the Activity Bar only - not a terminal option.
+      delete tm.description;
       const cwdPath = await getCwdPath(tm.cwd);
       if (cwdPath) {
         tm.cwdPath = cwdPath;

@@ -12,6 +12,7 @@ import { addEnvironmentVariableAsync } from './commands/addEnvironmentVariableAs
 import { changeMultiRootModeAsync } from './commands/changeMultiRootModeAsync';
 import { clearAllAsync } from './commands/clearAllAsync';
 import { showLog } from './utils/launch-log';
+import { setEditTextStorageUri } from './utils/edit-text-in-editor';
 import { addGlobalVariableAsync } from './commands/addGlobalVariableAsync';
 import { editGlobalVariableAsync } from './commands/editGlobalVariableAsync';
 import { removeGlobalVariableAsync } from './commands/removeGlobalVariableAsync';
@@ -50,6 +51,7 @@ import { TreeProvider } from './explorer/tree-provider';
 import { extCommands, ACTIVITY_VIEW_ID, sysCommands, constants } from './utils/constants';
 
 export async function activate(context: vscode.ExtensionContext) {
+  setEditTextStorageUri(context.globalStorageUri);
   await Configuration.initialize();
   registerSchemaProvider(context);
   context.subscriptions.push(

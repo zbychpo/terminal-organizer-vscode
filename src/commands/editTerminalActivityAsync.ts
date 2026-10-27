@@ -3,6 +3,8 @@ import { Configuration } from '../configuration/configuration';
 import { constants, terminalFieldDescriptions } from '../utils/constants';
 import { collectAllTerminalNames, showErrorMessageWithDetail } from '../utils/utils';
 import { pickVariableValue } from '../utils/pick-variable-value';
+import { editTextInEditor } from '../utils/edit-text-in-editor';
+import { getTerminalDescriptionText, toStoredDescription } from '../utils/terminal-description';
 import { vscodeIcons } from '../utils/vscode-icons';
 
 const colorOptions = [
@@ -13,7 +15,7 @@ const colorOptions = [
 ];
 
 const fieldOrder = [
-  "name", "commands", "cwd", "color", "icon", "env", "joinOperator", "shellPath",
+  "name", "description", "commands", "cwd", "color", "icon", "env", "joinOperator", "shellPath",
   "shellArgs", "message", "disabled", "autoExecuteCommands", "focus", "hideFromUser",
   "isTransient", "strictEnv"
 ];
@@ -33,6 +35,13 @@ export var applyTerminalFieldUpdate = (terminal, field, value) => {
 
 export var describeField = (terminal, field) => {
   const value = terminal[field];
+  if (field === "description") {
+    const lines = getTerminalDescriptionText(terminal).split("\n").filter((line) => line.trim() !== "");
+    if (lines.length === 0) {
+      return "(not set)";
+    }
+    return lines.length > 1 ? `${lines[0]} … (+${lines.length - 1} more lines)` : lines[0];
+  }
   if (booleanFields.includes(field)) {
     return value ? "Yes" : "No";
   }
@@ -116,6 +125,40 @@ export var editTerminalActivityAsync = async (terminalTreeItem) => {
     }
     const field = pickedField.label;
     const fieldDescription = terminalFieldDescriptions[field];
+
+    if (field === "description") {
+      // Multi-line: edited in a regular editor, applied on every save.
+      const terminalName = terminal.name;
+      await editTextInEditor({
+        fileName: `${terminalName || "terminal"}.description.md`,
+        initialText: getTerminalDescriptionText(terminal),
+        onSave: async (text) => {
+          try {
+            const freshConfig = await configuration.load();
+            const freshSession = freshConfig?.sessions?.[sessionId];
+            const freshItem = freshSession?.[terminalArrayIndex];
+            const freshIndexInGroup = Array.isArray(freshItem) ? freshItem.findIndex((t) => t.name === terminalName) : -1;
+            const freshTerminal = Array.isArray(freshItem) ? freshItem[freshIndexInGroup] : freshItem;
+            if (!freshTerminal || freshTerminal.name !== terminalName) {
+              vscode.window.showWarningMessage(constants.editTerminalDescriptionTerminalGone.replace("{name}", terminalName));
+              return;
+            }
+            const updated = applyTerminalFieldUpdate(freshTerminal, "description", toStoredDescription(text));
+            if (Array.isArray(freshItem)) {
+              freshItem[freshIndexInGroup] = updated;
+            } else {
+              freshSession[terminalArrayIndex] = updated;
+            }
+            await configuration.save({ sessions: freshConfig.sessions });
+            vscode.window.setStatusBarMessage(constants.editTerminalDescriptionSaved.replace("{name}", terminalName), 3000);
+          } catch (error) {
+            showErrorMessageWithDetail(constants.editTerminalFailed, error);
+          }
+        }
+      });
+      vscode.window.setStatusBarMessage(constants.editTerminalDescriptionHint, 8000);
+      return;
+    }
 
     let newValue;
     if (booleanFields.includes(field)) {

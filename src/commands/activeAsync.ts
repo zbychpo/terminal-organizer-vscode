@@ -98,6 +98,8 @@ export var activeAsync = async (target?) => {
         const cwdFallbacks = new Set<number>();
         for (let i = 0; i < flatActivatedSession.length; i++) {
           const sessionItem = flatActivatedSession[i];
+          // Notes for the Activity Bar only - not a terminal option.
+          delete sessionItem.description;
           progress.report({ message: `Checking that "${sessionItem.cwd}" exists...` });
           const cwdPath = await getCwdPath(sessionItem.cwd);
           if (cwdPath) {

@@ -10,6 +10,7 @@ import { swapAdjacent } from '../../utils/reorder';
 import { mergeImportedTerminals } from '../../commands/importAsync';
 import { buildCommands as buildTasksCommands } from '../../commands/modules/tasksParse';
 import { applyTerminalFieldUpdate, describeField, validateJsonStringArray, validateJsonStringRecord } from '../../commands/editTerminalActivityAsync';
+import { getTerminalDescriptionText, toStoredDescription } from '../../utils/terminal-description';
 import { toggleMask } from '../../commands/toggleEnvironmentVariableMaskAsync';
 import { configurationTemplate } from '../../configuration/template';
 import { Configuration } from '../../configuration/configuration';
@@ -882,5 +883,29 @@ suite('Terminal Organizer Extension Test Suite', () => {
                 fs.writeFileSync(sessionFilePath, original);
             }
         }
+    });
+
+    test('A terminal description is stored as a string for one line and as an array of lines for several, and read back from either form', () => {
+        assert.strictEqual(toStoredDescription('Starts the API'), 'Starts the API');
+        assert.deepStrictEqual(toStoredDescription('Line 1\r\nLine 2\n\nLine 4\n\n'), ['Line 1', 'Line 2', '', 'Line 4'], 'CRLF normalized, trailing blank lines dropped, inner blank lines kept');
+        assert.strictEqual(toStoredDescription('   \n  '), undefined, 'blank text clears the field');
+        assert.strictEqual(getTerminalDescriptionText({ description: ['a', 'b'] }), 'a\nb');
+        assert.strictEqual(getTerminalDescriptionText({ description: 'single' }), 'single');
+        assert.strictEqual(getTerminalDescriptionText({}), '');
+        assert.strictEqual(getTerminalDescriptionText({ description: 42 }), '', 'ignores invalid values');
+    });
+
+    test('describeField previews a multi-line description by its first line and the number of remaining lines', () => {
+        assert.strictEqual(describeField({ description: ['First', 'Second', 'Third'] }, 'description'), 'First … (+2 more lines)');
+        assert.strictEqual(describeField({ description: 'Only line' }, 'description'), 'Only line');
+        assert.strictEqual(describeField({}, 'description'), '(not set)');
+    });
+
+    test('Bundled schema defines a string-or-lines "description" on terminalItem', async () => {
+        const doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(LATEST_SCHEMA_URI));
+        const description = JSON.parse(doc.getText()).definitions?.terminalItem?.properties?.description;
+        assert.ok(description, 'terminalItem.description is missing');
+        assert.deepStrictEqual(description.type, ['string', 'array']);
+        assert.strictEqual(description.items?.type, 'string');
     });
 });

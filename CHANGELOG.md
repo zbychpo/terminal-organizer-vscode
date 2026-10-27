@@ -1,3 +1,12 @@
+## 1.0.21
+
+Added a **description** to terminals: free-text notes, which can span several lines, shown at the top of the terminal's tooltip in the Activity Bar (and in its split-terminal group's tooltip).
+
+- In `sessions.json`, `description` is a string for a single line, or an array of strings for several lines (one line per item). The schema accepts both.
+- **Edit Terminal** → `description` opens the text in a regular editor, because the input box only takes a single line. Every save (Ctrl+S) writes it back to `sessions.json`, as a string or as an array of lines depending on its length. Saving empty text removes the field. The field picker previews it as the first line plus the number of remaining lines.
+- The description is only for the Activity Bar: it isn't passed to the terminal when the terminal is launched.
+
+
 ## 1.0.20
 
 Added a **launch log**. Turn on `terminal-organizer-vscode.logLaunches`, and every session or terminal launch is written to the **Terminal Organizer** output channel (open it with **Show Launch Log** in the Activity Bar's `...` menu or the command palette). Each entry shows:

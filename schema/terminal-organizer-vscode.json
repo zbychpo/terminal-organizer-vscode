@@ -166,6 +166,13 @@
           "type": "string",
           "description": "A human-readable string which will be used to represent the terminal in the UI."
         },
+        "description": {
+          "type": ["string", "array"],
+          "items": {
+            "type": "string"
+          },
+          "description": "Free-text notes about the terminal, shown in its tooltip in the Activity Bar. Use a string for a single line, or an array of strings for several lines (one line per item). Not passed to the terminal."
+        },
         "commands": {
           "type": "array",
           "description": "The command list.",

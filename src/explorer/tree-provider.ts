@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import { Configuration } from '../configuration/configuration';
 import { SessionConfiguration } from '../configuration/interface';
 import { INHERITABLE_OPTION_KEYS, applyGlobalVariables, mergeScopeConfigurations } from '../utils/scope-merge';
+import { getTerminalDescriptionText } from '../utils/terminal-description';
 import { extCommands, sysCommands, constants } from '../utils/constants';
 import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
@@ -26,6 +27,19 @@ var buildResolvedTerminalPreview = (terminal, variable, environmentVariables, gl
   const rawCommands = commands5?.join(operator);
   const resolved = substituteVariablesDeep(resolveVscodeVariablesDeep(terminalWithEnv, folderPath), variable);
   return { rawCommands, resolvedCommands: resolved.commands?.join(operator), env, resolvedEnv: maskEnvValues(resolved.env, maskedNames) };
+};
+// A terminal's multi-line "description" as a markdown block quote (each line
+// escaped, so it's shown as typed), or "" when it has none.
+var descriptionMarkdown = (terminal, indent = "") => {
+  const text = getTerminalDescriptionText(terminal).trim();
+  if (!text) {
+    return "";
+  }
+  const quoted = text
+    .split("\n")
+    .map((line) => `${indent}> ${new vscode.MarkdownString().appendText(line).value}`)
+    .join(`  ${os.EOL}`);
+  return `${quoted}${os.EOL}${os.EOL}`;
 };
 // Tags every item in a scope's subtree with that scope's id, so any command
 // invoked on it acts on the right sessions.json.
@@ -466,7 +480,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
         terminals.map((terminal) => {
           const { name, disabled } = terminal;
           const { rawCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables, joinOperator, maskedNames, folderPath);
-          let section = `- ${name}${disabled ? " (disabled)" : ""}${os.EOL}\`\`\`sh${os.EOL}${rawCommands}${os.EOL}\`\`\`${os.EOL}`;
+          let section = `- ${name}${disabled ? " (disabled)" : ""}${os.EOL}${descriptionMarkdown(terminal, "  ")}\`\`\`sh${os.EOL}${rawCommands}${os.EOL}\`\`\`${os.EOL}`;
           if (resolvedCommands && resolvedCommands !== rawCommands) {
             section += `  **Resolved command**${os.EOL}\`\`\`sh${os.EOL}${resolvedCommands}${os.EOL}\`\`\`${os.EOL}`;
           }
@@ -495,7 +509,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       item.tooltipFactory = () => {
         const { rawCommands: terminalCommands, resolvedCommands, env, resolvedEnv } = buildResolvedTerminalPreview(terminal, variable, environmentVariables, joinOperator, maskedNames, folderPath);
         const tooltip = new vscode.MarkdownString(
-          `### **${terminalName}**${terminal.disabled ? " (disabled)" : ""}`
+          `### **${terminalName}**${terminal.disabled ? " (disabled)" : ""}${os.EOL}${os.EOL}${descriptionMarkdown(terminal)}`
         ).appendCodeblock(`${terminalCommands}`, "sh");
         if (resolvedCommands && resolvedCommands !== terminalCommands) {
           tooltip.appendMarkdown(`${os.EOL}**Resolved command**`).appendCodeblock(`${resolvedCommands}`, "sh");

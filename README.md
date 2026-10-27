@@ -276,6 +276,11 @@ Most terminal options mirror the VS Code terminal API. Common options are `name`
 // A human-readable string which will be used to represent the terminal in the UI.
 name: string,
 
+// Free-text notes shown in the terminal's tooltip in the Activity Bar (not passed to the terminal).
+// A string for one line, or an array of strings for several lines (one line per item).
+// "Edit Terminal" -> "description" opens it in an editor; every save (Ctrl+S) applies it.
+description?: string | Array<string>,
+
 // The command list.
 commands: Array<string>,
 
