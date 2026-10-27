@@ -1,4 +1,4 @@
-## 1.0.21
+## 1.0.22
 
 Added a **description** to terminals: free-text notes, which can span several lines, shown at the top of the terminal's tooltip in the Activity Bar (and in its split-terminal group's tooltip).
 
@@ -6,6 +6,9 @@ Added a **description** to terminals: free-text notes, which can span several li
 - **Edit Terminal** → `description` opens the text in a regular editor, because the input box only takes a single line. Every save (Ctrl+S) writes it back to `sessions.json`, as a string or as an array of lines depending on its length. Saving empty text removes the field. The field picker previews it as the first line plus the number of remaining lines.
 - The description is only for the Activity Bar: it isn't passed to the terminal when the terminal is launched.
 
+## 1.0.21
+
+Nothing new
 
 ## 1.0.20
 
