@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { Configuration } from '../configuration/configuration';
 import { constants } from './constants';
-import { resolveEnvironmentVariables, resolveMaskedVariableNames } from './environment-merge';
+import { getAssignedEnvironmentNames, getTerminalEnvironmentNames, resolveEnvironmentListMaskedNames, resolveEnvironmentListVariables } from './environment-merge';
 import { INHERITABLE_OPTION_KEYS } from './scope-merge';
 import { resolveVariableReferences } from './variable-substitution';
 import { resolveVscodeVariablesDeep } from './vscode-variable-resolver';
@@ -70,6 +70,8 @@ export type LaunchLogParams = {
   // What was launched, e.g. 'session "dev"' or 'terminal "api" (session "dev")'.
   title: string;
   effectiveConfig: any;
+  // The launched session's "sessionEnvironments" entry.
+  sessionEnvironmentNames?: string[];
   // Terminals before and after resolution, flattened, in the same order.
   rawTerminals: any[];
   resolvedTerminals: any[];
@@ -84,7 +86,7 @@ export var logLaunch = async (params: LaunchLogParams) => {
     return;
   }
   try {
-    const { configuration, title, effectiveConfig, rawTerminals, resolvedTerminals, cwdFallbacks = new Set<number>(), fallbackCwd } = params;
+    const { configuration, title, effectiveConfig, sessionEnvironmentNames = [], rawTerminals, resolvedTerminals, cwdFallbacks = new Set<number>(), fallbackCwd } = params;
     const log = getLogChannel();
     const rawOwn = await configuration.getSessionConfiguration();
     const ownLoaded = await configuration.load();
@@ -121,13 +123,16 @@ export var logLaunch = async (params: LaunchLogParams) => {
 
     const environments = effectiveConfig.environments || {};
     const activeEnvironment = effectiveConfig.activeEnvironment || "";
-    const activeEnvironmentVariables = resolveEnvironmentVariables(environments, activeEnvironment);
-    const maskedNames = resolveMaskedVariableNames(environments, activeEnvironment);
     const environmentLabel = (name) => (has(rawOwn.environments, name) ? `"${name}"` : `"${name}" (${workspaceFile})`);
     const resolvedVariables = resolveVariableReferences(resolveVscodeVariablesDeep(effectiveConfig.variable || {}, configuration.folderPath)) || {};
-    // A variable feeding a masked environment value is just as secret.
+    // A variable feeding a masked environment value is just as secret - in
+    // any environment a launched terminal uses.
     const maskedVariableNames = new Set<string>();
-    maskedNames.forEach((key: string) => collectVariableNames(activeEnvironmentVariables[key], maskedVariableNames));
+    rawTerminals.forEach((rawTerminal) => {
+      const names = getTerminalEnvironmentNames(environments, rawTerminal, sessionEnvironmentNames, activeEnvironment);
+      const variables = resolveEnvironmentListVariables(environments, names);
+      resolveEnvironmentListMaskedNames(environments, names).forEach((key: string) => collectVariableNames(variables[key], maskedVariableNames));
+    });
     const mask = (isMasked, value) => (isMasked ? constants.maskedValuePlaceholder : formatValue(value));
 
     log.info(`Launching ${title} in project "${configuration.label}"`);
@@ -152,10 +157,21 @@ export var logLaunch = async (params: LaunchLogParams) => {
     } else {
       log.appendLine(`  environment:     (none)`);
     }
+    const sessionAssigned = getAssignedEnvironmentNames(environments, undefined, sessionEnvironmentNames);
+    if (sessionAssigned.length > 0) {
+      log.appendLine(`  session environments: ${sessionAssigned.map(environmentLabel).join(", ")} (sessionEnvironments - replaces activeEnvironment)`);
+    }
 
     rawTerminals.forEach((rawTerminal, index) => {
       const resolved = resolvedTerminals[index] || {};
       log.appendLine(`  ▸ terminal "${rawTerminal?.name ?? resolved.name ?? "(empty)"}"${rawTerminal?.disabled ? " (disabled - not started)" : ""}`);
+      const terminalEnvironmentNames = getTerminalEnvironmentNames(environments, rawTerminal, sessionEnvironmentNames, activeEnvironment);
+      const terminalEnvironmentVariables = resolveEnvironmentListVariables(environments, terminalEnvironmentNames);
+      const maskedNames = resolveEnvironmentListMaskedNames(environments, terminalEnvironmentNames);
+      const ownAssigned = getAssignedEnvironmentNames(environments, rawTerminal);
+      if (ownAssigned.length > 0) {
+        log.appendLine(`      environments: ${terminalEnvironmentNames.map(environmentLabel).join(", ")} (${sessionAssigned.length > 0 ? "session + terminal" : "terminal - replaces activeEnvironment"})`);
+      }
       const rawCwd = rawTerminal?.cwd;
       if (cwdFallbacks.has(index)) {
         log.appendLine(`      cwd:         ${rawCwd ?? "(none)"} → not found, using ${fallbackCwd || "VS Code default"}`);
@@ -178,9 +194,9 @@ export var logLaunch = async (params: LaunchLogParams) => {
 
       // Variables used by this terminal (directly, through its env, or through other variables).
       const used = collectVariableNames(rawTerminal, new Set<string>());
-      Object.keys(activeEnvironmentVariables)
+      Object.keys(terminalEnvironmentVariables)
         .filter((key) => !has(rawTerminal?.env, key))
-        .forEach((key) => collectVariableNames(activeEnvironmentVariables[key], used));
+        .forEach((key) => collectVariableNames(terminalEnvironmentVariables[key], used));
       const queue = [...used];
       while (queue.length > 0) {
         collectVariableNames((effectiveConfig.variable || {})[queue.shift()!], new Set<string>()).forEach((ref) => {
@@ -207,12 +223,13 @@ export var logLaunch = async (params: LaunchLogParams) => {
         log.appendLine(`      env:`);
         envKeys.forEach((key) => {
           const fromTerminal = has(rawTerminal?.env, key);
-          const environmentSource = fromTerminal ? undefined : findEnvironmentSource(environments, activeEnvironment, key);
+          const environmentName = fromTerminal ? undefined : [...terminalEnvironmentNames].reverse().find((name) => findEnvironmentSource(environments, name, key));
+          const environmentSource = environmentName ? findEnvironmentSource(environments, environmentName, key) : undefined;
           const isMasked = !fromTerminal && maskedNames.has(key);
           const source = fromTerminal
             ? "terminal's own env"
             : environmentSource
-              ? `environment ${environmentLabel(environmentSource)}${environmentSource !== activeEnvironment ? ` (via ${activeEnvironment})` : ""}`
+              ? `environment ${environmentLabel(environmentSource)}${environmentSource !== environmentName ? ` (via ${environmentName})` : ""}`
               : "unknown";
           log.appendLine(`        ${key} = ${mask(isMasked, resolved.env[key])}   ← ${source}`);
         });

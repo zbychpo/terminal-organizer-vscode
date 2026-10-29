@@ -6,7 +6,7 @@ import { updateStatusBar } from '../utils/show-status-bar';
 import { showErrorMessageWithDetail, showGenerateConfiguration, killAllTerminal } from '../utils/utils';
 import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
-import { applyEnvironmentToTerminals, resolveEnvironmentVariables } from '../utils/environment-merge';
+import { applyEnvironmentsToTerminals, getSessionEnvironmentNames } from '../utils/environment-merge';
 import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
 import { resolveRelativeCwdDeep } from '../utils/scope-merge';
 import { logLaunch } from '../utils/launch-log';
@@ -36,7 +36,7 @@ export var activeBySessionAsync = async (configuration: Configuration, activeSes
       vscode.window.showWarningMessage(constants.notExistAnySpitTerminal.replace("{session}", activeSession));
       return;
     }
-    const activeEnvironmentVariables = resolveEnvironmentVariables(environments, activeEnvironment);
+    const sessionEnvironmentNames = getSessionEnvironmentNames(config, activeSession);
     const enabledItems = selectedSession.map((sessionItem) => {
       if (Array.isArray(sessionItem)) {
         const filtered = sessionItem.filter((i) => !i.disabled);
@@ -47,12 +47,14 @@ export var activeBySessionAsync = async (configuration: Configuration, activeSes
     }).filter(Boolean);
     const activatedSession = resolveRelativeCwdDeep(substituteVariablesDeep(
       resolveVscodeVariablesDeep(
-        applyEnvironmentToTerminals(
+        applyEnvironmentsToTerminals(
           applyGlobalJoinOperator(
             enabledItems,
             joinOperator
           ),
-          activeEnvironmentVariables
+          environments,
+          activeEnvironment,
+          sessionEnvironmentNames
         ),
         configuration.folderPath
       ),
@@ -90,6 +92,7 @@ export var activeBySessionAsync = async (configuration: Configuration, activeSes
           configuration,
           title: `session "${activeSession}"`,
           effectiveConfig: config,
+          sessionEnvironmentNames,
           rawTerminals: enabledItems.flat(),
           resolvedTerminals: flatActivatedSession
         });

@@ -22,6 +22,8 @@ export interface SessionConfiguration {
   variable?: Record<string, string>;
   environments?: Record<string, EnvironmentItem>;
   activeEnvironment?: string;
+  // Environments assigned to a whole session (by session name).
+  sessionEnvironments?: Record<string, string[]>;
   sessions?: Record<string, any[]>;
   [key: string]: any;
 }

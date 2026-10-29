@@ -6,7 +6,7 @@ import { findTerminal } from '../utils/find-terminal-in-config';
 import { showErrorMessageWithDetail } from '../utils/utils';
 import { substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
-import { applyEnvironmentToTerminals, resolveEnvironmentVariables } from '../utils/environment-merge';
+import { applyEnvironmentsToTerminals, getSessionEnvironmentNames } from '../utils/environment-merge';
 import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
 import { resolveRelativeCwdDeep } from '../utils/scope-merge';
 import { logLaunch } from '../utils/launch-log';
@@ -21,10 +21,10 @@ export var activeByTerminalAsync = async (configuration: Configuration, sessionI
     const { createTerminal, getCwdPath } = terminalBrowserify.TerminalApi.instance();
     const config = await configuration.loadEffective();
     const { theme = "default", noClear = false, variable, environments = {}, activeEnvironment = "", joinOperator } = config;
-    const activeEnvironmentVariables = resolveEnvironmentVariables(environments, activeEnvironment);
+    const sessionEnvironmentNames = getSessionEnvironmentNames(config, sessionId);
     const terminal = resolveRelativeCwdDeep(
       substituteVariablesDeep(
-        resolveVscodeVariablesDeep(applyEnvironmentToTerminals(applyGlobalJoinOperator(foundTerminal, joinOperator), activeEnvironmentVariables), configuration.folderPath),
+        resolveVscodeVariablesDeep(applyEnvironmentsToTerminals(applyGlobalJoinOperator(foundTerminal, joinOperator), environments, activeEnvironment, sessionEnvironmentNames), configuration.folderPath),
         resolveVscodeVariablesDeep(variable, configuration.folderPath)
       ),
       configuration.folderPath,
@@ -45,6 +45,7 @@ export var activeByTerminalAsync = async (configuration: Configuration, sessionI
       configuration,
       title: Array.isArray(foundTerminal) ? `split-terminal group (session "${sessionId}")` : `terminal "${foundTerminal.name}" (session "${sessionId}")`,
       effectiveConfig: config,
+      sessionEnvironmentNames,
       rawTerminals: Array.isArray(foundTerminal) ? foundTerminal : [foundTerminal],
       resolvedTerminals: terminals
     });

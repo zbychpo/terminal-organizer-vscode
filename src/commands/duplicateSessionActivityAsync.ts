@@ -47,6 +47,10 @@ export var duplicateSessionActivityAsync = async (sessionTreeItem) => {
     const newestConfiguration: Partial<SessionConfiguration> = {
       sessions: { ...sessions, [name]: JSON.parse(JSON.stringify(sessions[sessionId])) }
     };
+    const sessionEnvironments = config.sessionEnvironments;
+    if (Array.isArray(sessionEnvironments?.[sessionId])) {
+      newestConfiguration.sessionEnvironments = { ...sessionEnvironments, [name]: [...sessionEnvironments[sessionId]] };
+    }
     await configuration.save(newestConfiguration);
     vscode.window.showInformationMessage(constants.duplicateSessionSuccess);
   } catch (error) {

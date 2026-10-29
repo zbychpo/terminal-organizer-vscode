@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { substituteVariable, substituteVariablesDeep, resolveVariableReferences } from '../../utils/variable-substitution';
 import { resolveVscodeVariable, resolveVscodeVariablesDeep } from '../../utils/vscode-variable-resolver';
-import { applyEnvironmentToTerminals, resolveEnvironmentVariables, hasCircularInheritance, resolveMaskedVariableNames } from '../../utils/environment-merge';
+import { applyEnvironmentToTerminals, resolveEnvironmentVariables, hasCircularInheritance, resolveMaskedVariableNames, applyEnvironmentsToTerminals, getTerminalEnvironmentNames, resolveEnvironmentListMaskedNames } from '../../utils/environment-merge';
 import { swapAdjacent } from '../../utils/reorder';
 import { mergeImportedTerminals } from '../../commands/importAsync';
 import { buildCommands as buildTasksCommands } from '../../commands/modules/tasksParse';
@@ -159,6 +159,8 @@ suite('Terminal Organizer Extension Test Suite', () => {
         assert.ok(commands.includes('terminal-organizer-vscode.add-environment-variable-activity'));
         assert.ok(commands.includes('terminal-organizer-vscode.edit-environment-variable-activity'));
         assert.ok(commands.includes('terminal-organizer-vscode.remove-environment-variable-activity'));
+        assert.ok(commands.includes('terminal-organizer-vscode.assign-session-environments-activity'));
+        assert.ok(commands.includes('terminal-organizer-vscode.assign-terminal-environments-activity'));
     });
 
     test('substituteVariable replaces ${variable:NAME} with the matching value', () => {
@@ -357,7 +359,7 @@ suite('Terminal Organizer Extension Test Suite', () => {
 
     test('applyEnvironmentToTerminals recurses into standalone terminals and split-terminal groups alike', () => {
         const environmentVariables = { JAVA_HOME: 'C:\\java8' };
-        const session = [
+        const session: any[] = [
             { name: 'standalone', commands: [''] },
             [
                 { name: 'left', commands: [''], env: { JAVA_HOME: 'C:\\java11' } },
@@ -907,5 +909,41 @@ suite('Terminal Organizer Extension Test Suite', () => {
         assert.ok(description, 'terminalItem.description is missing');
         assert.deepStrictEqual(description.type, ['string', 'array']);
         assert.strictEqual(description.items?.type, 'string');
+    });
+    test('Assigned environments (session, then terminal) replace the active environment; unassigned terminals keep it', () => {
+        const environments = {
+            dev: { MODE: 'dev', ACTIVE_ONLY: '1' },
+            java8: { JAVA_HOME: 'C:\java8', MODE: 'java8' },
+            logging: { LOG: 'debug', MODE: 'logging', mask: ['LOG'] }
+        };
+        const session: any[] = [
+            { name: 'plain', commands: [] },
+            { name: 'own', commands: [], environments: ['logging'], env: { MODE: 'own' } },
+            [{ name: 'split', commands: [], environments: ['missing'] }]
+        ];
+
+        const withoutSession = applyEnvironmentsToTerminals(session, environments, 'dev', []);
+        assert.deepStrictEqual(withoutSession[0].env, { MODE: 'dev', ACTIVE_ONLY: '1' });
+        assert.deepStrictEqual(withoutSession[1].env, { LOG: 'debug', MODE: 'own' }, 'terminal env wins, active environment ignored');
+        assert.strictEqual(withoutSession[1].environments, undefined, '"environments" is not a terminal option');
+        assert.deepStrictEqual(withoutSession[2][0].env, { MODE: 'dev', ACTIVE_ONLY: '1' }, 'unknown names fall back to the active environment');
+
+        const withSession = applyEnvironmentsToTerminals(session, environments, 'dev', ['java8']);
+        assert.deepStrictEqual(withSession[0].env, { JAVA_HOME: 'C:\java8', MODE: 'java8' });
+        assert.deepStrictEqual(withSession[1].env, { JAVA_HOME: 'C:\java8', LOG: 'debug', MODE: 'own' });
+        assert.deepStrictEqual(getTerminalEnvironmentNames(environments, session[1], ['java8'], 'dev'), ['java8', 'logging']);
+        assert.deepStrictEqual([...resolveEnvironmentListMaskedNames(environments, ['java8', 'logging'])], ['LOG']);
+        assert.deepStrictEqual(session[1].environments, ['logging'], 'the raw session must not be mutated');
+    });
+
+    test('Bundled schema defines terminalItem.environments and the top-level "sessionEnvironments" property', async () => {
+        const ext = vscode.extensions.getExtension(EXTENSION_ID);
+        assert.ok(ext);
+        await ext!.activate();
+
+        const doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(LATEST_SCHEMA_URI));
+        const schema = JSON.parse(doc.getText());
+        assert.strictEqual(schema.definitions.terminalItem.properties.environments?.type, 'array');
+        assert.ok(schema.definitions['terminal-organizer-vscode'].properties.sessionEnvironments);
     });
 });

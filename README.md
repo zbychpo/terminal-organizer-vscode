@@ -255,6 +255,12 @@ Terminal Organizer stores sessions in a configuration object. Each session conta
     // terminal's env before a session is activated.
     activeEnvironment: string,
 
+    // Environments assigned to whole sessions, by session name. Terminals of such a
+    // session use them instead of activeEnvironment. See "Assigning environments" below.
+    sessionEnvironments: {
+        [sessionName: string]: string[]
+    },
+
     // Named sets of environment variables. See the "Environments" section below.
     environments: {
         name: {
@@ -303,6 +309,10 @@ icon?: string,
 
 // Object with environment variables that will be added to the editor process.
 env?: object,
+
+// Names of environments (from "environments") assigned to this terminal, applied after its
+// session's "sessionEnvironments". When it has any (own or session's), activeEnvironment is not used.
+environments?: string[],
 
 // When enabled the terminal will run the process as normal but not be surfaced to the user until Terminal.show is called. The typical usage for this is when you need to run something that may need interactivity but only want to tell the user about it when interaction is needed. Note that the terminals will still be exposed to all extensions as normal.
 hideFromUser?: boolean,
@@ -466,6 +476,40 @@ A terminal can still define its own `env` - only the keys it **doesn't** already
 With the `java17` environment above active, this terminal ends up with `JAVA_HOME=C:\Program Files\Java\jdk1.8.0` (its own value), plus `MAVEN_HOME` and `PATH` filled in from `java17`, plus `ILE_ELEMENTO=10`.
 
 Manage environments from the Activity Bar's **Environments** section: the **+** button on the group adds one, and each environment has inline actions to set it as **active** (✓), **duplicate** it, **edit** its inheritance ($(type-hierarchy)), **add** a variable to it, or **remove** it entirely; each variable inside an environment has inline **toggle mask** ($(eye)), **edit**, and **remove** actions. The Sessions tree's per-terminal tooltip shows the resulting merged `env` - i.e. exactly what will be passed to the terminal once the active environment and any variables are resolved.
+
+#### Assigning environments to sessions and terminals ✨
+
+Instead of relying on the global `activeEnvironment`, you can assign environments to a whole session (top-level `sessionEnvironments`, keyed by session name - a session is a JSON array, so it can't carry the setting itself) and/or to a single terminal (its own `environments` list):
+
+```jsonc
+{
+    "activeEnvironment": "java17",
+    "sessionEnvironments": {
+        // Every terminal of "legacy" gets java8 instead of the active environment.
+        "legacy": ["java8"]
+    },
+    "sessions": {
+        "default": [
+            // Only this terminal uses java8 + logging; the others use java17 (active).
+            { "name": "old-build", "commands": ["mvn package"], "environments": ["java8", "logging"] },
+            { "name": "build", "commands": ["mvn clean install"] }
+        ],
+        "legacy": [
+            { "name": "app", "commands": ["mvn jetty:run"] },
+            // java8 (from the session), then logging on top of it.
+            { "name": "app-debug", "commands": ["mvn jetty:run"], "environments": ["logging"] }
+        ]
+    }
+}
+```
+
+Rules:
+
+- A terminal that has any assigned environment - its session's, its own, or both - **ignores `activeEnvironment`**. Terminals with none keep using the active environment as before.
+- The environments are merged in order: the session's first, then the terminal's own; a later one overrides an earlier one. The terminal's own `env` still wins over all of them.
+- Names that aren't defined in `environments` are ignored (if none of the assigned names exist, the terminal falls back to `activeEnvironment`). Removing an environment from the Activity Bar also removes it from every session/terminal it was assigned to; removing or duplicating a session removes/copies its `sessionEnvironments` entry.
+
+Assign them from the Activity Bar: right-click a session or a terminal → **Assign Environments** (a multi-select picker; checking nothing clears the assignment). For terminals it's also available as the `environments` field of the inline **edit** (pencil) action. Session and terminal tooltips list the assigned environments, and the terminal tooltips' resolved `env` reflects them.
 
 #### Environment inheritance ✨
 

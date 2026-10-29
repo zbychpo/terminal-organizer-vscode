@@ -21,7 +21,7 @@ export var removeAsync = async (target?) => {
       vscode.window.showWarningMessage(constants.notExistConfiguration);
       return;
     }
-    const { active, sessions } = config;
+    const { active, sessions, sessionEnvironments } = config;
     if (!sessions) {
       vscode.window.showWarningMessage(constants.notExistAnySessions);
       return;
@@ -46,6 +46,10 @@ export var removeAsync = async (target?) => {
     newestConfiguration.sessions = sessions;
     if (newestConfiguration.sessions?.[selectedSession]) {
       delete newestConfiguration.sessions[selectedSession];
+    }
+    if (sessionEnvironments?.[selectedSession]) {
+      const { [selectedSession]: _removed, ...rest } = sessionEnvironments;
+      newestConfiguration.sessionEnvironments = rest;
     }
     if (active === selectedSession) {
       newestConfiguration.active = constants.defaultSession;

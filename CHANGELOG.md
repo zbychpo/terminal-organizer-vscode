@@ -1,3 +1,14 @@
+## 1.0.23
+
+Environments can now be **assigned to sessions and terminals**, instead of always using `activeEnvironment`.
+
+- `sessionEnvironments` (top level, keyed by session name) assigns environments to every terminal of a session; a terminal's own `environments` list assigns them to that terminal only. Both are lists of names from `environments`, and the schema accepts them.
+- A terminal with any assigned environment (its own, its session's, or both) ignores `activeEnvironment`. The session's environments are applied first, then the terminal's; a later one wins, and the terminal's own `env` still wins over all of them.
+- Right-click a session or a terminal in the Activity Bar → **Assign Environments**. Terminals also have it as the `environments` field of **Edit Terminal**. Tooltips list the assigned environments, and the resolved `env` previews and the launch log use them.
+- Removing an environment removes it from every session/terminal it was assigned to; removing or duplicating a session removes/copies its `sessionEnvironments` entry.
+
+Fixed an environment's `mask` list being passed to terminals as an environment variable named `mask`.
+
 ## 1.0.22
 
 Added a **description** to terminals: free-text notes, which can span several lines, shown at the top of the terminal's tooltip in the Activity Bar (and in its split-terminal group's tooltip).

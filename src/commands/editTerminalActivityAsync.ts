@@ -6,6 +6,7 @@ import { pickVariableValue } from '../utils/pick-variable-value';
 import { editTextInEditor } from '../utils/edit-text-in-editor';
 import { getTerminalDescriptionText, toStoredDescription } from '../utils/terminal-description';
 import { vscodeIcons } from '../utils/vscode-icons';
+import { pickEnvironmentNames } from './assignEnvironmentsActivityAsync';
 
 const colorOptions = [
   "terminal.ansiBlack", "terminal.ansiBlue", "terminal.ansiBrightBlack", "terminal.ansiBrightBlue",
@@ -15,7 +16,7 @@ const colorOptions = [
 ];
 
 const fieldOrder = [
-  "name", "description", "commands", "cwd", "color", "icon", "env", "joinOperator", "shellPath",
+  "name", "description", "commands", "cwd", "color", "icon", "env", "environments", "joinOperator", "shellPath",
   "shellArgs", "message", "disabled", "autoExecuteCommands", "focus", "hideFromUser",
   "isTransient", "strictEnv"
 ];
@@ -47,6 +48,9 @@ export var describeField = (terminal, field) => {
   }
   if (jsonStringArrayFields.includes(field)) {
     return Array.isArray(value) && value.length > 0 ? value.join(" | ") : "(none)";
+  }
+  if (field === "environments") {
+    return Array.isArray(value) && value.length > 0 ? value.join(", ") : "(none - active environment)";
   }
   if (field === "env") {
     return value && Object.keys(value).length > 0 ? JSON.stringify(value) : "(none)";
@@ -229,6 +233,12 @@ export var editTerminalActivityAsync = async (terminalTreeItem) => {
       }
       const parsed = JSON.parse(input);
       newValue = Object.keys(parsed).length > 0 ? parsed : undefined;
+    } else if (field === "environments") {
+      const names = await pickEnvironmentNames(configuration, Array.isArray(terminal.environments) ? terminal.environments : [], title);
+      if (names === undefined) {
+        return;
+      }
+      newValue = names.length > 0 ? names : undefined;
     } else if (field === "name") {
       const allTerminalNames = collectAllTerminalNames(sessions);
       allTerminalNames.delete(terminal.name);

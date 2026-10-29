@@ -54,6 +54,8 @@ export var extCommands = {
   editEnvironmentVariableActivity: "terminal-organizer-vscode.edit-environment-variable-activity",
   removeEnvironmentVariableActivity: "terminal-organizer-vscode.remove-environment-variable-activity",
   editEnvironmentInheritanceActivity: "terminal-organizer-vscode.edit-environment-inheritance-activity",
+  assignSessionEnvironmentsActivity: "terminal-organizer-vscode.assign-session-environments-activity",
+  assignTerminalEnvironmentsActivity: "terminal-organizer-vscode.assign-terminal-environments-activity",
   toggleEnvironmentVariableMaskActivity: "terminal-organizer-vscode.toggle-environment-variable-mask-activity",
   changeMultiRootModeActivity: "terminal-organizer-vscode.change-multi-root-mode-activity",
   addGlobalVariableActivity: "terminal-organizer-vscode.add-global-variable-activity",
@@ -230,6 +232,13 @@ export var constants = {
   environmentInheritanceCircular: "This would create a circular inheritance chain.",
   editEnvironmentInheritanceSuccess: "The environment's inheritance was successfully updated!",
   editEnvironmentInheritanceFailed: "Failed to edit the environment's inheritance.",
+  // Environments assigned to sessions/terminals
+  assignSessionEnvironmentsTitle: 'Assign environments to session "{name}"',
+  assignTerminalEnvironmentsTitle: 'Assign environments to terminal "{name}"',
+  assignEnvironmentsPlaceHolder: "Select environments (checked order sets precedence: later checked wins; none = use the active environment)",
+  assignEnvironmentsNoEnvironments: "There are no environments defined yet.",
+  assignEnvironmentsSuccess: "The assigned environments were successfully updated!",
+  assignEnvironmentsFailed: "Failed to assign the environments.",
   // Environment variable masking
   maskedValuePlaceholder: "••••••••",
   // Multi-root workspaces (one sessions.json per project)
@@ -278,6 +287,7 @@ export var terminalFieldDescriptions = {
   color: "The id of the color. The available colors are listed in https://code.visualstudio.com/docs/getstarted/theme-color-reference.",
   icon: "The id of the icon. The available icons are listed in https://code.visualstudio.com/api/references/icons-in-labels#icon-listing.",
   env: "Environment variables that will be added to the terminal's process, on top of any active environment.",
+  environments: "Names of environments assigned to this terminal (added after its session's). When it - or its session - has any, the active environment is not used.",
   joinOperator: "The operator used to join this terminal's multiple commands (e.g. \";\", \"&&\", \"||\"). Overrides the global \"joinOperator\" for this terminal only.",
   shellPath: "A path to a custom shell executable to be used in the terminal.",
   shellArgs: "Args for the custom shell executable.",

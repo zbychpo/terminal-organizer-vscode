@@ -23,9 +23,13 @@ export var removeSessionActivityAsync = async (sessionTreeItem) => {
     if (!config?.sessions) {
       return;
     }
-    const { active, sessions } = config;
+    const { active, sessions, sessionEnvironments } = config;
     const newestConfiguration: Partial<SessionConfiguration> = { sessions };
     delete newestConfiguration.sessions[sessionId];
+    if (sessionEnvironments?.[sessionId]) {
+      const { [sessionId]: _removed, ...rest } = sessionEnvironments;
+      newestConfiguration.sessionEnvironments = rest;
+    }
     if (active === sessionId) {
       newestConfiguration.active = constants.defaultSession;
       updateStatusBar(newestConfiguration.active);
