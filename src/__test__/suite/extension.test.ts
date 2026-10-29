@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { substituteVariable, substituteVariablesDeep, resolveVariableReferences } from '../../utils/variable-substitution';
 import { resolveVscodeVariable, resolveVscodeVariablesDeep } from '../../utils/vscode-variable-resolver';
+import { getItemMenuEntries } from '../../commands/showItemMenuActivityAsync';
 import { applyEnvironmentToTerminals, resolveEnvironmentVariables, hasCircularInheritance, resolveMaskedVariableNames, applyEnvironmentsToTerminals, getTerminalEnvironmentNames, resolveEnvironmentListMaskedNames } from '../../utils/environment-merge';
 import { swapAdjacent } from '../../utils/reorder';
 import { mergeImportedTerminals } from '../../commands/importAsync';
@@ -945,5 +946,21 @@ suite('Terminal Organizer Extension Test Suite', () => {
         const schema = JSON.parse(doc.getText());
         assert.strictEqual(schema.definitions.terminalItem.properties.environments?.type, 'array');
         assert.ok(schema.definitions['terminal-organizer-vscode'].properties.sessionEnvironments);
+    });
+    test('"More Actions" (...) lists exactly the right-click menu entries of a session/terminal item', async () => {
+        const ext = vscode.extensions.getExtension(EXTENSION_ID);
+        assert.ok(ext);
+        const commandsOf = (contextValue: string) => getItemMenuEntries(ext!.packageJSON, contextValue).map((entry) => entry.command.replace('terminal-organizer-vscode.', ''));
+        assert.deepStrictEqual(commandsOf('session-context'), ['assign-session-environments-activity']);
+        assert.deepStrictEqual(commandsOf('terminal-context'), [
+            'send-to-new-terminal-activity',
+            'send-to-current-terminal-activity',
+            'copy-command-activity',
+            'navigate-activity',
+            'assign-terminal-environments-activity'
+        ]);
+        assert.deepStrictEqual(commandsOf('variable-context'), [], 'inline-only items get no entries');
+        const inline = ext!.packageJSON.contributes.menus['view/item/context'].find((m) => m.command === 'terminal-organizer-vscode.show-item-menu-activity');
+        assert.ok(inline?.group?.startsWith('inline'), 'the (...) button itself must be inline');
     });
 });

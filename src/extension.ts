@@ -21,6 +21,7 @@ import { editVariableAsync } from './commands/editVariableAsync';
 import { editEnvironmentVariableAsync } from './commands/editEnvironmentVariableAsync';
 import { editEnvironmentInheritanceAsync } from './commands/editEnvironmentInheritanceAsync';
 import { assignSessionEnvironmentsActivityAsync, assignTerminalEnvironmentsActivityAsync } from './commands/assignEnvironmentsActivityAsync';
+import { showItemMenuActivityAsync } from './commands/showItemMenuActivityAsync';
 import { editTerminalActivityAsync } from './commands/editTerminalActivityAsync';
 import { generateAsync } from './commands/generateAsync';
 import { importAsync } from './commands/importAsync';
@@ -252,6 +253,9 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand(extCommands.assignTerminalEnvironmentsActivity, async (terminalTreeItem) => {
       await assignTerminalEnvironmentsActivityAsync(terminalTreeItem);
+    }),
+    vscode.commands.registerCommand(extCommands.showItemMenuActivity, async (treeItem) => {
+      await showItemMenuActivityAsync(context.extension.packageJSON, treeItem);
     }),
     vscode.commands.registerCommand(extCommands.showLog, () => {
       showLog();

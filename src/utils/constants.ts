@@ -56,6 +56,7 @@ export var extCommands = {
   editEnvironmentInheritanceActivity: "terminal-organizer-vscode.edit-environment-inheritance-activity",
   assignSessionEnvironmentsActivity: "terminal-organizer-vscode.assign-session-environments-activity",
   assignTerminalEnvironmentsActivity: "terminal-organizer-vscode.assign-terminal-environments-activity",
+  showItemMenuActivity: "terminal-organizer-vscode.show-item-menu-activity",
   toggleEnvironmentVariableMaskActivity: "terminal-organizer-vscode.toggle-environment-variable-mask-activity",
   changeMultiRootModeActivity: "terminal-organizer-vscode.change-multi-root-mode-activity",
   addGlobalVariableActivity: "terminal-organizer-vscode.add-global-variable-activity",
@@ -239,6 +240,10 @@ export var constants = {
   assignEnvironmentsNoEnvironments: "There are no environments defined yet.",
   assignEnvironmentsSuccess: "The assigned environments were successfully updated!",
   assignEnvironmentsFailed: "Failed to assign the environments.",
+  // "More Actions" (...) button on tree items
+  itemMenuTitle: '"{name}"',
+  itemMenuPlaceHolder: "Select an action",
+  itemMenuFailed: "Failed to run the action.",
   // Environment variable masking
   maskedValuePlaceholder: "••••••••",
   // Multi-root workspaces (one sessions.json per project)

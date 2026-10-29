@@ -1,3 +1,7 @@
+## 1.0.24
+
+Sessions and terminals in the Activity Bar have a new inline **More Actions** ($(ellipsis)) button. It opens a picker with the same actions as their right-click menu.
+
 ## 1.0.23
 
 Environments can now be **assigned to sessions and terminals**, instead of always using `activeEnvironment`.

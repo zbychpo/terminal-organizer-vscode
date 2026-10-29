@@ -172,6 +172,12 @@ Open your Terminal Organizer configuration with a single command whenever you ne
 
 Each setting under the Activity Bar's **Global Configs** group also has an inline **edit** (pencil) button, so you don't have to open `sessions.json`/`settings.json` by hand: it picks the right control for the setting - Yes/No for on/off settings, a theme picker for `theme`, a session picker for `active`, and a multi-select list (Global Configs, Variables, Environments, session names, split-terminal group names, environment names) for `openNodeOnStart`.
 
+### More Actions (...) on sessions and terminals ✨
+
+Sessions and terminals in the Activity Bar have an inline **More Actions** ($(ellipsis)) button, the last one in the row. It shows the same actions as the item's right-click menu (for a session: **Assign Environments**; for a terminal: **Send to new Terminal**, **Send to current Terminal**, **Copy**, **Edit**, **Assign Environments**). You can use them without right-clicking.
+
+VS Code doesn't let an extension add a real "..." drop-down menu to a single tree item, only to the view's title bar. So the button opens a picker at the top of the window, not a menu next to the item. Choose an action there to run it on that session or terminal.
+
 ## Configuration
 
 Terminal Organizer stores sessions in a configuration object. Each session contains one or more terminals. Use an object for a normal terminal, or an array of terminal objects when you want split terminals.
@@ -509,7 +515,7 @@ Rules:
 - The environments are merged in order: the session's first, then the terminal's own; a later one overrides an earlier one. The terminal's own `env` still wins over all of them.
 - Names that aren't defined in `environments` are ignored (if none of the assigned names exist, the terminal falls back to `activeEnvironment`). Removing an environment from the Activity Bar also removes it from every session/terminal it was assigned to; removing or duplicating a session removes/copies its `sessionEnvironments` entry.
 
-Assign them from the Activity Bar: right-click a session or a terminal → **Assign Environments** (a multi-select picker; checking nothing clears the assignment). For terminals it's also available as the `environments` field of the inline **edit** (pencil) action. Session and terminal tooltips list the assigned environments, and the terminal tooltips' resolved `env` reflects them.
+Assign them from the Activity Bar: right-click a session or a terminal (or use its inline **More Actions** ($(ellipsis)) button, which lists the same right-click actions) → **Assign Environments** (a multi-select picker; checking nothing clears the assignment). For terminals it's also available as the `environments` field of the inline **edit** (pencil) action. Session and terminal tooltips list the assigned environments, and the terminal tooltips' resolved `env` reflects them.
 
 #### Environment inheritance ✨
 

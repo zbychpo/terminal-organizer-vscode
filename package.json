@@ -3,7 +3,7 @@
     "displayName": "Terminal Organizer VSCode",
     "description": "Elevate your terminal experience! Effortlessly configuration, seamlessly restore your last session, and manage sessions with ease. Personalize your workspace with colorful themes and boost productivity by importing commands swiftly.",
     "icon": "assets/logo.png",
-    "version": "1.0.23",
+    "version": "1.0.24",
     "main": "./dist/extension.js",
     "browser": "./dist/web/extension.js",
     "preview": false,
@@ -367,6 +367,11 @@
                 "icon": "$(server-environment)"
             },
             {
+                "command": "terminal-organizer-vscode.show-item-menu-activity",
+                "title": "More Actions...",
+                "icon": "$(ellipsis)"
+            },
+            {
                 "command": "terminal-organizer-vscode.toggle-environment-variable-mask-activity",
                 "title": "Toggle Mask",
                 "icon": "$(eye)"
@@ -587,6 +592,11 @@
                     "command": "terminal-organizer-vscode.move-session-down-activity",
                     "when": "viewItem == session-context",
                     "group": "inline@6"
+                },
+                {
+                    "command": "terminal-organizer-vscode.show-item-menu-activity",
+                    "when": "viewItem == session-context || viewItem == terminal-context",
+                    "group": "inline@9"
                 },
                 {
                     "command": "terminal-organizer-vscode.send-to-new-terminal-activity",
