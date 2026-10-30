@@ -1,3 +1,12 @@
+## 1.0.25
+
+Hovering over an environment variable in the Activity Bar now shows more than its definition. If the value uses `${variable:NAME}`, the tooltip also lists:
+
+- the value of every variable it uses, with the same precedence as when a terminal is launched: project, then workspace-level (multiRootMode `inherit`), then global variables. A variable that references other variables is resolved all the way. A missing variable is shown as *not defined*;
+- the **resolved value**: the whole value after substitution, including `${env:...}` and `${workspaceFolder}`.
+
+Masked variables show neither, so a secret isn't revealed.
+
 ## 1.0.24
 
 Sessions and terminals in the Activity Bar have a new inline **More Actions** ($(ellipsis)) button. It opens a picker with the same actions as their right-click menu.

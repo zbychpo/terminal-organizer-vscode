@@ -483,6 +483,21 @@ With the `java17` environment above active, this terminal ends up with `JAVA_HOM
 
 Manage environments from the Activity Bar's **Environments** section: the **+** button on the group adds one, and each environment has inline actions to set it as **active** (✓), **duplicate** it, **edit** its inheritance ($(type-hierarchy)), **add** a variable to it, or **remove** it entirely; each variable inside an environment has inline **toggle mask** ($(eye)), **edit**, and **remove** actions. The Sessions tree's per-terminal tooltip shows the resulting merged `env` - i.e. exactly what will be passed to the terminal once the active environment and any variables are resolved.
 
+Hover over a variable inside an environment to see its definition. When the value uses `${variable:NAME}`, the tooltip also shows the value of each variable it uses and the resolved value:
+
+```text
+PATH
+${variable:javaHome}bin;${env:PATH}
+
+Variables
+- javaHome: C:\Program Files\Java\jdk-17
+
+Resolved value
+C:\Program Files\Java\jdk-17bin;<your PATH>
+```
+
+Variables are looked up the same way as when a terminal is launched: project first, then the workspace-level file (multiRootMode `inherit`), then global variables. A missing variable is shown as *not defined*. The resolved value also expands `${env:...}` and `${workspaceFolder}`, and is shown only when it differs from the definition. Masked variables show neither the variable values nor the resolved value.
+
 #### Assigning environments to sessions and terminals ✨
 
 Instead of relying on the global `activeEnvironment`, you can assign environments to a whole session (top-level `sessionEnvironments`, keyed by session name - a session is a JSON array, so it can't carry the setting itself) and/or to a single terminal (its own `environments` list):

@@ -6,7 +6,7 @@ import { SessionConfiguration } from '../configuration/interface';
 import { INHERITABLE_OPTION_KEYS, applyGlobalVariables, mergeScopeConfigurations } from '../utils/scope-merge';
 import { getTerminalDescriptionText } from '../utils/terminal-description';
 import { extCommands, sysCommands, constants } from '../utils/constants';
-import { substituteVariablesDeep } from '../utils/variable-substitution';
+import { resolveVariableReferences, substituteVariablesDeep } from '../utils/variable-substitution';
 import { resolveVscodeVariablesDeep } from '../utils/vscode-variable-resolver';
 import { applyEnvironmentsToTerminals, getAssignedEnvironmentNames, getSessionEnvironmentNames, getTerminalEnvironmentNames, resolveEnvironmentListMaskedNames, resolveEnvironmentVariables, resolveMaskedVariableNames } from '../utils/environment-merge';
 import { applyGlobalJoinOperator } from '../utils/join-operator-merge';
@@ -424,6 +424,8 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
               isActive: name === activeEnvironment,
               openNodeOnStart,
               environments,
+              variable: resolvedVariable,
+              folderPath,
               inheritedFrom: Object.prototype.hasOwnProperty.call(ownEnvironments, name) ? undefined : inheritedFrom
             })
           )
@@ -560,14 +562,14 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       return item;
     };
     this.renderEnvironmentItem = (params) => {
-      const { name, value = {}, isActive, openNodeOnStart = [], environments = {}, inheritedFrom } = params;
+      const { name, value = {}, isActive, openNodeOnStart = [], environments = {}, variable, folderPath, inheritedFrom } = params;
       const inherits = Array.isArray(value.inherits) ? value.inherits : [];
       const entries = Object.entries(value).filter(([key]) => key !== "inherits" && key !== "mask");
       const ownKeys = new Set(entries.map(([key]) => key));
       const maskedNames = resolveMaskedVariableNames(environments, name);
       const item = new TKTreeItem(
         name,
-        entries.map(([key, val]) => this.renderEnvironmentVariableItem({ environmentName: name, name: key, value: val, masked: maskedNames.has(key), inherited: !!inheritedFrom }))
+        entries.map(([key, val]) => this.renderEnvironmentVariableItem({ environmentName: name, name: key, value: val, masked: maskedNames.has(key), inherited: !!inheritedFrom, variable, folderPath }))
       );
       item.description = [
         isActive ? "active" : "",
@@ -595,11 +597,34 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       return item;
     };
     this.renderEnvironmentVariableItem = (params) => {
-      const { environmentName, name, value, masked, inherited } = params;
+      const { environmentName, name, value, masked, inherited, variable = {}, folderPath } = params;
       const displayValue = masked ? constants.maskedValuePlaceholder : value;
       const item = new TKTreeItem(name);
       item.description = displayValue;
-      item.tooltip = new vscode.MarkdownString(`### **${name}**`).appendCodeblock(`${displayValue}`);
+      // Besides the definition: the value of every ${variable:NAME} it uses,
+      // and the resulting value (a masked value stays masked).
+      item.tooltipFactory = () => {
+        const tooltip = new vscode.MarkdownString(`### **${name}**`).appendCodeblock(`${displayValue}`);
+        const referencedNames = [...new Set([...`${value ?? ""}`.matchAll(/\$\{variable:([^}]+)\}/g)].map((match) => match[1]))];
+        if (masked || referencedNames.length === 0) {
+          return tooltip;
+        }
+        const resolvedVariables = resolveVariableReferences(variable) || {};
+        tooltip.appendMarkdown(
+          `**Variables**${os.EOL}${referencedNames
+            .map((variableName) =>
+              Object.prototype.hasOwnProperty.call(resolvedVariables, variableName)
+                ? `- **${variableName}**: \`${resolvedVariables[variableName]}\``
+                : `- **${variableName}**: _${constants.variableNotDefinedLabel}_`
+            )
+            .join(os.EOL)}${os.EOL}${os.EOL}`
+        );
+        const resolvedValue = substituteVariablesDeep(resolveVscodeVariablesDeep(value, folderPath), variable);
+        if (resolvedValue !== value) {
+          tooltip.appendMarkdown(`**Resolved value**`).appendCodeblock(`${resolvedValue}`);
+        }
+        return tooltip;
+      };
       item.contextValue = inherited ? "environment-variable-inherited-context" : "environment-variable-context";
       item.iconPath = new vscode.ThemeIcon(masked ? "eye-closed" : "symbol-variable");
       item.environmentName = environmentName;

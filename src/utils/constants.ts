@@ -246,6 +246,7 @@ export var constants = {
   itemMenuFailed: "Failed to run the action.",
   // Environment variable masking
   maskedValuePlaceholder: "••••••••",
+  variableNotDefinedLabel: "not defined",
   // Multi-root workspaces (one sessions.json per project)
   scopeHasNoConfiguration: "no sessions file",
   scopeUsesWorkspaceConfiguration: "uses {workspace} configuration",
