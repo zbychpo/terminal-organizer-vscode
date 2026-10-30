@@ -487,13 +487,13 @@ Hover over a variable inside an environment to see its definition. When the valu
 
 ```text
 PATH
-${variable:javaHome}bin;${env:PATH}
+${variable:javaHome}\bin;${env:PATH}
 
 Variables
 - javaHome: C:\Program Files\Java\jdk-17
 
 Resolved value
-C:\Program Files\Java\jdk-17bin;<your PATH>
+C:\Program Files\Java\jdk-17\bin;<your PATH>
 ```
 
 Variables are looked up the same way as when a terminal is launched: project first, then the workspace-level file (multiRootMode `inherit`), then global variables. A missing variable is shown as *not defined*. The resolved value also expands `${env:...}` and `${workspaceFolder}`, and is shown only when it differs from the definition. Masked variables show neither the variable values nor the resolved value.
