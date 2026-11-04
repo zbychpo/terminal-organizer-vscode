@@ -1,3 +1,7 @@
+## 1.0.26
+
+Fixed picking a path with the folder button (e.g. **Edit Terminal** → `cwd`, or a variable's value) in a remote window (Remote - SSH, WSL, Dev Containers). There, VS Code's file picker opens in place of the input box, and the input box treated this as being cancelled, so the chosen path was lost. Now the input box comes back with the chosen path filled in. The picker also starts at the current path, if there is one, or at the workspace folder, on the remote file system.
+
 ## 1.0.25
 
 Hovering over an environment variable in the Activity Bar now shows more than its definition. If the value uses `${variable:NAME}`, the tooltip also lists:
