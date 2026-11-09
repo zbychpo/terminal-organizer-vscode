@@ -10,6 +10,7 @@ import { addVariableAsync } from './commands/addVariableAsync';
 import { addEnvironmentAsync } from './commands/addEnvironmentAsync';
 import { addEnvironmentVariableAsync } from './commands/addEnvironmentVariableAsync';
 import { changeMultiRootModeAsync } from './commands/changeMultiRootModeAsync';
+import { searchNestedProjectsAsync } from './commands/searchNestedProjectsAsync';
 import { clearAllAsync } from './commands/clearAllAsync';
 import { showLog } from './utils/launch-log';
 import { setEditTextStorageUri } from './utils/edit-text-in-editor';
@@ -271,6 +272,9 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand(extCommands.changeMultiRootModeActivity, async () => {
       await changeMultiRootModeAsync();
+    }),
+    vscode.commands.registerCommand(extCommands.searchNestedProjectsActivity, async () => {
+      await searchNestedProjectsAsync();
     }),
     vscode.commands.registerCommand(extCommands.toggleEnvironmentVariableMaskActivity, async (environmentVariableTreeItem) => {
       await toggleEnvironmentVariableMaskAsync(environmentVariableTreeItem);

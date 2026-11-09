@@ -93,9 +93,12 @@ export var logLaunch = async (params: LaunchLogParams) => {
     const inherited = (await configuration.loadInherited()) || {};
     const userConfigKeys = configuration.userConfigKeys || [];
     const globalVariables = Configuration.getGlobalVariables();
-    const workspaceLabel = Configuration.getWorkspaceScope()?.label || "workspace";
+    const parentScope = configuration.getParentScope();
     const projectFile = `project ${configuration.relativeSessionFilePath}`;
-    const workspaceFile = `workspace-level sessions.json (${workspaceLabel})`;
+    const workspaceFile =
+      configuration.kind === "nested"
+        ? `parent project sessions.json (${parentScope?.label || "parent"})`
+        : `workspace-level sessions.json (${parentScope?.label || "workspace"})`;
 
     const optionSource = (key) => {
       if (userConfigKeys.includes(key)) {

@@ -3,7 +3,7 @@
     "displayName": "Terminal Organizer VSCode",
     "description": "Elevate your terminal experience! Effortlessly configuration, seamlessly restore your last session, and manage sessions with ease. Personalize your workspace with colorful themes and boost productivity by importing commands swiftly.",
     "icon": "assets/logo.png",
-    "version": "1.0.26",
+    "version": "1.0.27",
     "main": "./dist/extension.js",
     "browser": "./dist/web/extension.js",
     "preview": false,
@@ -403,6 +403,12 @@
                 "category": "Terminal Organizer",
                 "title": "Change Multi-root Mode",
                 "icon": "$(settings-edit)"
+            },
+            {
+                "command": "terminal-organizer-vscode.search-nested-projects-activity",
+                "category": "Terminal Organizer",
+                "title": "Search for Nested Projects",
+                "icon": "$(search)"
             }
         ],
         "menus": {
@@ -510,6 +516,11 @@
                     "command": "terminal-organizer-vscode.remove",
                     "when": "view == terminalOrganizerActivityView",
                     "group": "tk1@3"
+                },
+                {
+                    "command": "terminal-organizer-vscode.search-nested-projects-activity",
+                    "when": "view == terminalOrganizerActivityView",
+                    "group": "tk1@4"
                 },
                 {
                     "command": "terminal-organizer-vscode.show-log",
@@ -859,6 +870,23 @@
                         "type": "string"
                     },
                     "markdownDescription": "Where to look for the sessions file in each workspace folder (and next to a multi-root workspace's `.code-workspace` file), relative to that folder. The first existing file wins; a new file is created at the first location."
+                },
+                "terminal-organizer-vscode.nestedProjectsScanDepth": {
+                    "type": "integer",
+                    "default": 1,
+                    "minimum": 0,
+                    "maximum": 10,
+                    "scope": "resource",
+                    "markdownDescription": "How many levels of subfolders of each workspace folder to scan for **nested projects**: subfolders with their own sessions file (at one of the `#terminal-organizer-vscode.sessionFileLocations#`), e.g. `ocr/.vscode/sessions.json`. Each one is shown as a separate project. `1` = direct subfolders only, `0` = no automatic scan (only `#terminal-organizer-vscode.nestedProjects#`). Hidden folders and `node_modules` are skipped, and a file only counts if it has a `sessions` key."
+                },
+                "terminal-organizer-vscode.nestedProjects": {
+                    "type": "array",
+                    "default": [],
+                    "items": {
+                        "type": "string"
+                    },
+                    "scope": "resource",
+                    "markdownDescription": "Subfolders shown as **nested projects** regardless of `#terminal-organizer-vscode.nestedProjectsScanDepth#`, relative to the workspace folder (e.g. `services/ocr`). Fill it in with **Terminal Organizer: Search for Nested Projects** (the Activity Bar's `...` menu), which searches all subfolders. A listed subfolder without a sessions file is shown too, so one can be generated there."
                 },
                 "terminal-organizer-vscode.logLaunches": {
                     "type": "boolean",

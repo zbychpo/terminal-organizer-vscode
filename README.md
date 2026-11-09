@@ -610,6 +610,22 @@ my-app/
 
 The session-related settings (`active`, `activateOnStartup`, `keepExistingTerminals`, `noClear`, `joinOperator`, `openNodeOnStart`, `theme`) are resource-scoped, so a folder's `.vscode/settings.json` can override the workspace's.
 
+### Nested projects ✨
+
+A subfolder with its own sessions file is shown as a separate project, even when it is not a workspace folder:
+
+```
+my-app/                          <- the opened folder
+├── .vscode/sessions.json        <- project "my-app"
+├── ocr/.vscode/sessions.json    <- nested project "ocr"
+└── services/api/sessions.json   <- nested project "services/api" (depth 2)
+```
+
+- **Automatic scan:** `terminal-organizer-vscode.nestedProjectsScanDepth` (default `1`: direct subfolders only; `0` turns it off) sets how deep each workspace folder is scanned. Hidden folders and `node_modules` are skipped. A file only counts if it has a `sessions` key (or a Terminal Organizer `$schema`).
+- **Search from the menu:** **Search for Nested Projects** (the `...` menu of the Activity Bar view, or the command palette) searches all subfolders at any depth and lets you check which projects to show. They are saved in `terminal-organizer-vscode.nestedProjects`, e.g. `["services/api"]`, in the workspace folder's settings. You can also edit that list by hand. A listed subfolder without a sessions file is shown too, so one can be generated there.
+- **cwd:** a relative `cwd` resolves against the nested project's subfolder, then the result is normalized into one absolute path. For example, `"cwd": "src/../app"` in `ocr` gives `my-app/ocr/app`. A terminal without a `cwd` starts in the subfolder, and a bare `${workspaceFolder}` also means the subfolder.
+- **Inheritance:** with `multiRootMode: "inherit"`, a nested project inherits `variable`, `environments` and unset options from its parent project (the workspace folder or a nested project above it), the same way a folder inherits from the workspace-level file. Without its own file, it falls back to the closest parent that has one. In the default `separate` mode every project uses only its own file.
+
 ### Keybinding support
 
 Run specific terminals directly via keyboard shortcuts by adding custom keybindings to your `keybindings.json`:
@@ -695,7 +711,7 @@ Open the file (**Open Configuration**). VS Code's JSON validation underlines the
 
 ### A project's sessions file isn't picked up in a multi-root workspace
 
-- Each project must be its own folder in the `.code-workspace` file. Subdirectories of a single opened folder aren't searched, so `my-app/backend/sessions.json` is ignored when `my-app` is opened as one folder.
+- A subdirectory of an opened folder is only found as a [nested project](#nested-projects-) within `terminal-organizer-vscode.nestedProjectsScanDepth` levels (default `1`). Use **Search for Nested Projects** for deeper ones. A file without a `sessions` key is ignored there.
 - The file must be at one of the locations in `terminal-organizer-vscode.sessionFileLocations` (default: `.vscode/sessions.json`, then `sessions.json`), relative to that folder. If both exist, the first one in the list is used.
 - The workspace-level file is only used when it sits next to a saved `.code-workspace` file whose directory isn't itself one of the workspace folders.
 - Variables, environments and options from the workspace-level file only reach the folders when `terminal-organizer-vscode.multiRootMode` is `inherit`. In the default `separate` mode every folder uses only its own file.

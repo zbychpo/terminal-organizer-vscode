@@ -787,6 +787,9 @@ suite('Terminal Organizer Extension Test Suite', () => {
             fs.mkdirSync(path.dirname(sessionFilePath), { recursive: true });
             fs.writeFileSync(sessionFilePath, JSON.stringify({ sessions: { default: [] }, variable: { javaHome21: 'C:/own', other: 'x' } }));
             await config().update('globalVariables', { javaHome21: 'C:/global' }, vscode.ConfigurationTarget.Global);
+            // The sample workspace has nested projects (prj2, smieszny_project);
+            // keep it a single scope so the groups render at the top level.
+            await config().update('nestedProjectsScanDepth', 0, vscode.ConfigurationTarget.Workspace);
             await Configuration.initialize();
             const provider = new TreeProvider();
 
@@ -803,6 +806,8 @@ suite('Terminal Organizer Extension Test Suite', () => {
             assert.deepStrictEqual(labelsOf(globals?.children), ['javaHome21']);
         } finally {
             await config().update('globalVariables', previousGlobals, vscode.ConfigurationTarget.Global);
+            await config().update('nestedProjectsScanDepth', undefined, vscode.ConfigurationTarget.Workspace);
+            await Configuration.initialize();
             if (original === undefined) {
                 fs.rmSync(sessionFilePath, { force: true });
             } else {
@@ -962,5 +967,67 @@ suite('Terminal Organizer Extension Test Suite', () => {
         assert.deepStrictEqual(commandsOf('variable-context'), [], 'inline-only items get no entries');
         const inline = ext!.packageJSON.contributes.menus['view/item/context'].find((m) => m.command === 'terminal-organizer-vscode.show-item-menu-activity');
         assert.ok(inline?.group?.startsWith('inline'), 'the (...) button itself must be inline');
+    });
+
+    test('Nested projects: normalizeRelativePath and looksLikeSessionFile', () => {
+        assert.strictEqual(Configuration.normalizeRelativePath('./ocr/'), 'ocr');
+        assert.strictEqual(Configuration.normalizeRelativePath('services\\ocr'), 'services/ocr');
+        assert.strictEqual(Configuration.normalizeRelativePath('a/../b'), 'b');
+        assert.strictEqual(Configuration.normalizeRelativePath('../outside'), undefined);
+        assert.strictEqual(Configuration.normalizeRelativePath('/abs'), undefined);
+        assert.strictEqual(Configuration.normalizeRelativePath('C:/abs'), undefined);
+        assert.strictEqual(Configuration.normalizeRelativePath('  '), undefined);
+        assert.ok(Configuration.looksLikeSessionFile('{"sessions":{}}'));
+        assert.ok(Configuration.looksLikeSessionFile(`{"$schema":"${LATEST_SCHEMA_URI}"}`));
+        assert.ok(!Configuration.looksLikeSessionFile('{"users":[]}'), 'an unrelated sessions.json is not a project');
+        assert.ok(!Configuration.looksLikeSessionFile('not json'));
+    });
+
+    test('Nested projects: a subfolder sessions file becomes a nested scope with its own cwd base and inheritance', async () => {
+        const workspaceFolder = vscode.workspace.workspaceFolders![0];
+        const root = workspaceFolder.uri.fsPath;
+        const nestedDir = path.join(root, 'zz-nested-test');
+        const unrelatedDir = path.join(root, 'zz-unrelated-test');
+        const config = () => vscode.workspace.getConfiguration('terminal-organizer-vscode');
+        try {
+            fs.mkdirSync(path.join(nestedDir, '.vscode'), { recursive: true });
+            fs.mkdirSync(unrelatedDir, { recursive: true });
+            fs.writeFileSync(path.join(nestedDir, '.vscode', 'sessions.json'), JSON.stringify({ sessions: { default: [{ name: 'n', cwd: 'src/../app' }] } }));
+            fs.writeFileSync(path.join(unrelatedDir, 'sessions.json'), JSON.stringify({ users: [] }));
+            await Configuration.discover();
+
+            const nested = Configuration.all().find((s) => s.kind === 'nested' && s.relativePath === 'zz-nested-test');
+            assert.ok(nested, 'the subfolder with a sessions file is discovered');
+            assert.ok(!Configuration.all().some((s) => s.relativePath === 'zz-unrelated-test'), 'a sessions.json without "sessions" is ignored');
+            assert.strictEqual(nested!.folderPath, nestedDir);
+            assert.strictEqual(nested!.autoDetected, true);
+            assert.strictEqual(nested!.ownsDefaultCwd, true, 'terminals without a cwd start in the nested folder');
+            assert.strictEqual(nested!.getParentScope()?.id, workspaceFolder.uri.toString());
+            assert.strictEqual(Configuration.findScopeByPath(path.join(nestedDir, 'app', 'x.txt')), nested, 'files inside it belong to the nested scope');
+
+            const own = await nested!.load();
+            const resolved = resolveRelativeCwdDeep(own.sessions.default, nested!.folderPath, nested!.ownsDefaultCwd);
+            assert.strictEqual(resolved[0].cwd, path.join(nestedDir, 'app'), 'relative cwd = nested folder + cwd, normalized into one path');
+
+            await config().update('multiRootMode', 'inherit', vscode.ConfigurationTarget.Workspace);
+            const parentOwn = await Configuration.all()[0].load();
+            const inherited = await nested!.loadInherited();
+            assert.deepStrictEqual(inherited?.variable || {}, parentOwn.variable || {}, 'inherits the parent folder\'s variables in inherit mode');
+
+            await config().update('nestedProjectsScanDepth', 0, vscode.ConfigurationTarget.Workspace);
+            await Configuration.discover();
+            assert.ok(!Configuration.all().some((s) => s.kind === 'nested'), 'depth 0 turns the automatic scan off');
+            await config().update('nestedProjects', ['zz-nested-test'], vscode.ConfigurationTarget.Workspace);
+            await Configuration.discover();
+            const listed = Configuration.all().find((s) => s.relativePath === 'zz-nested-test');
+            assert.ok(listed && listed.autoDetected === false, 'a nestedProjects entry is shown without the scan');
+        } finally {
+            await config().update('multiRootMode', undefined, vscode.ConfigurationTarget.Workspace);
+            await config().update('nestedProjectsScanDepth', undefined, vscode.ConfigurationTarget.Workspace);
+            await config().update('nestedProjects', undefined, vscode.ConfigurationTarget.Workspace);
+            fs.rmSync(nestedDir, { recursive: true, force: true });
+            fs.rmSync(unrelatedDir, { recursive: true, force: true });
+            await Configuration.discover();
+        }
     });
 });

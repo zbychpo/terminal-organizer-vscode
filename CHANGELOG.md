@@ -1,3 +1,13 @@
+## 1.0.27
+
+Added **nested projects**: a subfolder of a workspace folder with its own sessions file (e.g. `ocr/.vscode/sessions.json` next to the root `.vscode/sessions.json`) is now shown as a separate project, with its own sessions, variables and environments. Before, only the root of each workspace folder was searched, so such a file was ignored.
+
+- Direct subfolders are scanned automatically. `terminal-organizer-vscode.nestedProjectsScanDepth` (default `1`) sets how many levels deep, and `0` turns the scan off. Hidden folders and `node_modules` are skipped. A file only counts if it has a `sessions` key (or a Terminal Organizer `$schema`), so an unrelated `sessions.json` isn't picked up.
+- **Search for Nested Projects** (the Activity Bar's `...` menu, or the command palette) searches all subfolders, at any depth, and lets you check which projects to show. The checked ones are saved in `terminal-organizer-vscode.nestedProjects` (the workspace folder's settings). A subfolder listed there is shown even without a sessions file, so one can be generated there.
+- In a nested project, a relative `cwd` resolves against the project's subfolder: `cwd: "src/../app"` in `ocr` becomes `<folder>/ocr/app`, one normalized absolute path. A terminal without a `cwd` starts in the subfolder, and a bare `${workspaceFolder}` also means the subfolder.
+- With `multiRootMode: "inherit"`, a nested project inherits from its parent project (the workspace folder, or a nested project above it, plus whatever that one inherits), the same way a folder inherits from the workspace-level file. Without its own file, it falls back to the closest parent that has one.
+- The tree shows nested projects with a $(folder) icon after their workspace folder. Their tooltip says how each one was found. Files inside the subfolder belong to the nested project when a command picks the project from the active editor.
+
 ## 1.0.26
 
 Fixed picking a path with the folder button (e.g. **Edit Terminal** → `cwd`, or a variable's value) in a remote window (Remote - SSH, WSL, Dev Containers). There, VS Code's file picker opens in place of the input box, and the input box treated this as being cancelled, so the chosen path was lost. Now the input box comes back with the chosen path filled in. The picker also starts at the current path, if there is one, or at the workspace folder, on the remote file system.

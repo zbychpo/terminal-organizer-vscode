@@ -201,9 +201,10 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
     };
     this.renderScopeItem = async (configuration) => {
       const isWorkspace = configuration.kind === "workspace";
+      const isNested = configuration.kind === "nested";
       const hasFile = await configuration.isDefinedSessionFile();
-      const workspaceScope = Configuration.getWorkspaceScope();
-      const usesWorkspaceFallback = !hasFile && !isWorkspace && Configuration.getMultiRootMode() === "inherit" && !!workspaceScope && (await workspaceScope.isDefinedSessionFile());
+      const fallbackScope = hasFile ? configuration : await Configuration.withFallback(configuration);
+      const usesWorkspaceFallback = fallbackScope !== configuration;
       const item = new TKTreeItem(configuration.label, hasFile ? await this.getScopeChildren(configuration) : undefined);
       if (hasFile) {
         item.collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
@@ -211,13 +212,20 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       item.description = hasFile
         ? configuration.relativeSessionFilePath
         : usesWorkspaceFallback
-          ? constants.scopeUsesWorkspaceConfiguration.replace("{workspace}", workspaceScope!.label)
+          ? constants.scopeUsesWorkspaceConfiguration.replace("{workspace}", fallbackScope.label)
           : constants.scopeHasNoConfiguration;
-      item.tooltip = new vscode.MarkdownString(`### **${configuration.label}**${isWorkspace ? " (workspace)" : ""}`)
+      item.tooltip = new vscode.MarkdownString(`### **${configuration.label}**${isWorkspace ? " (workspace)" : isNested ? " (nested project)" : ""}`)
         .appendCodeblock(configuration.sessionFilePath)
-        .appendText(isWorkspace ? constants.scopeWorkspaceTooltip : "");
+        .appendText(isWorkspace ? constants.scopeWorkspaceTooltip : "")
+        .appendText(
+          isNested
+            ? constants.scopeNestedTooltip
+                .replace("{parent}", configuration.getParentScope()?.label || "")
+                .replace("{source}", configuration.autoDetected ? constants.scopeNestedAutoDetected : constants.scopeNestedListed)
+            : ""
+        );
       item.contextValue = hasFile ? "scope-context" : "scope-empty-context";
-      item.iconPath = new vscode.ThemeIcon(isWorkspace ? "folder-library" : "root-folder");
+      item.iconPath = new vscode.ThemeIcon(Configuration.getScopeIcon(configuration));
       item.scopeId = configuration.id;
       return item;
     };
@@ -237,7 +245,7 @@ export class TreeProvider implements vscode.TreeDataProvider<TKTreeItem> {
       const inheritedKeys = inheritedConfig
         ? INHERITABLE_OPTION_KEYS.filter((key) => !Configuration.isSetOnValue(ownConfig[key]) && Configuration.isSetOnValue(config[key]))
         : [];
-      const inheritedFrom = Configuration.getWorkspaceScope()?.label;
+      const inheritedFrom = configuration.getParentScope()?.label;
       const userConfigKeys = configuration.userConfigKeys;
       const configItem = (params) => this.renderConfigItem({ ...params, userConfigKeys, inheritedFrom: inheritedKeys.includes(params.label) ? inheritedFrom : undefined });
       const folderPath = configuration.folderPath;

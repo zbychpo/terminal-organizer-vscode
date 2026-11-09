@@ -6,22 +6,31 @@ import { getWorkspaceRootPath } from '../utils/get-workspace';
 import { applyGlobalVariables, mergeScopeConfigurations } from '../utils/scope-merge';
 import { getTabWidth } from '../utils/utils';
 
-export type ConfigScopeKind = "workspace" | "folder";
+export type ConfigScopeKind = "workspace" | "folder" | "nested";
 export type MultiRootMode = "separate" | "inherit";
 
 export var WORKSPACE_SCOPE_ID = "workspace";
+
+export type NestedProjectCandidate = { folder: vscode.WorkspaceFolder; relativePath: string; sessionFilePath: string };
 
 // One Configuration instance per "scope": every workspace folder gets one
 // (backed by its own sessions.json), plus an optional workspace-level one
 // next to the saved .code-workspace file in a multi-root workspace. A single
 // folder workspace has exactly one scope, at the same path as before
 // multi-root support existed (<folder>/.vscode/sessions.json).
+// A subfolder of a workspace folder with its own sessions file (e.g.
+// <folder>/ocr/.vscode/sessions.json) is a "nested" scope: found automatically
+// down to nestedProjectsScanDepth levels, or listed in nestedProjects (which
+// the "Search for Nested Projects" command fills in).
 export class Configuration {
   static wsConfigurationSpace = "terminal-organizer-vscode";
   static defaultSessionFileLocations = [".vscode/sessions.json", "sessions.json"];
   // Extension settings that control scope discovery rather than describing a
   // session file - kept out of the settings.json -> sessions.json merge in load().
-  static nonSessionSettingKeys = ["sessionFileLocations", "multiRootMode", "globalVariables", "logLaunches"];
+  static nonSessionSettingKeys = ["sessionFileLocations", "multiRootMode", "globalVariables", "logLaunches", "nestedProjects", "nestedProjectsScanDepth"];
+  // Directory names never scanned for nested projects (besides hidden ones).
+  static skippedNestedDirNames = ["node_modules", "bower_components", "__pycache__"];
+  static maxScannedDirsPerLevel = 2000;
   private static scopes: Configuration[] = [];
   private static watchRoots: string[] = [];
   // Raw text of each sessions file (undefined = missing/unreadable), keyed by
@@ -43,9 +52,26 @@ export class Configuration {
   readonly folderPath: string;
   readonly vscodeDirPath: string;
   readonly sessionFilePath: string;
+  // Nested scopes only: the closest scope above (another nested scope or the
+  // workspace folder's), the path relative to the workspace folder (posix
+  // separators), and whether the automatic scan found it.
+  readonly parentId?: string;
+  readonly relativePath?: string;
+  readonly autoDetected?: boolean;
   userConfigKeys: string[] = [];
 
-  constructor(params: { id: string; kind: ConfigScopeKind; label: string; folder?: vscode.WorkspaceFolder; rootPath: string; folderPath: string; sessionFilePath: string }) {
+  constructor(params: {
+    id: string;
+    kind: ConfigScopeKind;
+    label: string;
+    folder?: vscode.WorkspaceFolder;
+    rootPath: string;
+    folderPath: string;
+    sessionFilePath: string;
+    parentId?: string;
+    relativePath?: string;
+    autoDetected?: boolean;
+  }) {
     this.id = params.id;
     this.kind = params.kind;
     this.label = params.label;
@@ -54,6 +80,9 @@ export class Configuration {
     this.folderPath = params.folderPath;
     this.vscodeDirPath = Configuration.getVscodeDirPath(params.rootPath);
     this.sessionFilePath = params.sessionFilePath;
+    this.parentId = params.parentId;
+    this.relativePath = params.relativePath;
+    this.autoDetected = params.autoDetected;
   }
 
   // ---------------------------------------------------------------------------
@@ -109,10 +138,180 @@ export class Configuration {
         scopes.push(workspaceScope);
       }
     }
-    scopes.push(...folderScopes);
+    const excludedPaths = [...folderScopes.map((s) => s.folderPath), ...(workspaceDirPath ? [workspaceDirPath] : [])];
+    for (const folderScope of folderScopes) {
+      scopes.push(folderScope, ...(await this.discoverNested(folderScope, folders.length > 1, excludedPaths)));
+    }
     this.scopes = scopes;
     this.watchRoots = watchRoots;
     return scopes;
+  }
+  // The nested scopes of one workspace folder: the automatic scan's finds
+  // plus the folder's nestedProjects entries, sorted by path, each pointing
+  // at its closest parent scope.
+  private static async discoverNested(folderScope: Configuration, qualifyLabel: boolean, excludedPaths: string[]): Promise<Configuration[]> {
+    const folder = folderScope.folder!;
+    const autoDetected = new Set(await this.scanNestedDirs(folderScope, this.getNestedScanDepth(folder)));
+    const relativePaths = [...new Set([...autoDetected, ...this.getNestedProjects(folder)])]
+      .filter((rel) => !excludedPaths.some((p) => this.isSamePath(p, path.join(folderScope.folderPath, rel))))
+      .sort((a, b) => a.localeCompare(b));
+    const nested: Configuration[] = [];
+    for (const rel of relativePaths) {
+      const rootPath = path.join(folderScope.rootPath, rel);
+      const parent = nested.filter((n) => rel.startsWith(`${n.relativePath}/`)).sort((a, b) => b.relativePath!.length - a.relativePath!.length)[0] || folderScope;
+      nested.push(
+        new Configuration({
+          id: vscode.Uri.joinPath(folder.uri, ...rel.split("/")).toString(),
+          kind: "nested",
+          label: qualifyLabel ? `${folder.name}/${rel}` : rel,
+          folder,
+          rootPath,
+          folderPath: path.join(folderScope.folderPath, rel),
+          sessionFilePath: await this.findSessionFilePath(rootPath),
+          parentId: parent.id,
+          relativePath: rel,
+          autoDetected: autoDetected.has(rel)
+        })
+      );
+    }
+    return nested;
+  }
+  static getNestedScanDepth(folder?: vscode.WorkspaceFolder): number {
+    const depth = vscode.workspace.getConfiguration(this.wsConfigurationSpace, folder?.uri).get<number>("nestedProjectsScanDepth");
+    return typeof depth === "number" && depth > 0 ? Math.min(Math.floor(depth), 10) : 0;
+  }
+  // The folder's nestedProjects entries, normalized to "a/b" form; entries
+  // that are absolute or leave the folder are ignored.
+  static getNestedProjects(folder: vscode.WorkspaceFolder): string[] {
+    const value = vscode.workspace.getConfiguration(this.wsConfigurationSpace, folder.uri).get<string[]>("nestedProjects");
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .filter((v) => typeof v === "string")
+      .map((v) => this.normalizeRelativePath(v))
+      .filter((v): v is string => !!v);
+  }
+  static normalizeRelativePath(value: string): string | undefined {
+    const trimmed = value.trim().replace(/\\/g, "/");
+    if (trimmed === "" || path.posix.isAbsolute(trimmed) || /^[a-zA-Z]:/.test(trimmed)) {
+      return undefined;
+    }
+    const normalized = path.posix.normalize(trimmed).replace(/^(\.\/)+/, "").replace(/\/+$/, "");
+    if (normalized === "" || normalized === "." || normalized === ".." || normalized.startsWith("../")) {
+      return undefined;
+    }
+    return normalized;
+  }
+  private static isSkippedNestedDir(name: string) {
+    return name.startsWith(".") || this.skippedNestedDirNames.includes(name);
+  }
+  // Breadth-first walk of the folder down to maxDepth levels (hidden dirs,
+  // node_modules etc. and symlinks skipped), returning the subfolders that
+  // hold a Terminal Organizer sessions file.
+  private static async scanNestedDirs(folderScope: Configuration, maxDepth: number): Promise<string[]> {
+    const folder = folderScope.folder;
+    const found: string[] = [];
+    if (!folder || maxDepth <= 0) {
+      return found;
+    }
+    let level = [""];
+    for (let depth = 1; depth <= maxDepth && level.length > 0; depth++) {
+      const next: string[] = [];
+      for (const rel of level) {
+        let entries: [string, vscode.FileType][];
+        try {
+          entries = await vscode.workspace.fs.readDirectory(rel ? vscode.Uri.joinPath(folder.uri, ...rel.split("/")) : folder.uri);
+        } catch {
+          continue;
+        }
+        for (const [name, type] of entries) {
+          if (type === vscode.FileType.Directory && !this.isSkippedNestedDir(name) && next.length < this.maxScannedDirsPerLevel) {
+            next.push(rel ? `${rel}/${name}` : name);
+          }
+        }
+      }
+      for (const rel of next) {
+        if (await this.findProjectSessionFile(path.join(folderScope.rootPath, rel))) {
+          found.push(rel);
+        }
+      }
+      level = next;
+    }
+    return found;
+  }
+  // The first existing sessions file under rootPath, if it looks like ours -
+  // so an unrelated "sessions.json" somewhere in a project isn't picked up.
+  static async findProjectSessionFile(rootPath: string): Promise<string | undefined> {
+    for (const location of this.getSessionFileLocations()) {
+      const candidate = path.join(rootPath, location);
+      const text = await this.readFileCached(candidate);
+      if (text !== undefined) {
+        return this.looksLikeSessionFile(text) ? candidate : undefined;
+      }
+    }
+    return undefined;
+  }
+  static looksLikeSessionFile(text: string) {
+    try {
+      const json = JSON.parse(text);
+      return (
+        !!json &&
+        typeof json === "object" &&
+        !Array.isArray(json) &&
+        (Object.prototype.hasOwnProperty.call(json, "sessions") || /terminal-(organizer|keeper)/i.test(String(json.$schema || "")))
+      );
+    } catch {
+      return false;
+    }
+  }
+  // Every subfolder (any depth) of every workspace folder with a sessions
+  // file, for the "Search for Nested Projects" picker. Uses findFiles, so
+  // files.exclude applies; hidden dirs, node_modules etc. are skipped.
+  static async searchNestedProjects(token?: vscode.CancellationToken): Promise<NestedProjectCandidate[]> {
+    const locations = this.getSessionFileLocations().map((l) => l.replace(/\\/g, "/").replace(/^(\.\/)+/, ""));
+    const workspaceFolders = vscode.workspace.workspaceFolders || [];
+    const results: NestedProjectCandidate[] = [];
+    for (const folder of workspaceFolders) {
+      const rootPath = this.scopes.find((s) => s.kind === "folder" && s.id === folder.uri.toString())?.rootPath || folder.uri.fsPath;
+      const uris = await vscode.workspace.findFiles(new vscode.RelativePattern(folder, `**/{${locations.join(",")}}`), undefined, 10000, token);
+      const dirs = new Set<string>();
+      for (const uri of uris) {
+        const relFile = path.relative(folder.uri.fsPath, uri.fsPath).replace(/\\/g, "/");
+        for (const location of locations) {
+          if (relFile.endsWith(`/${location}`)) {
+            const rel = relFile.slice(0, -(location.length + 1));
+            if (rel && !rel.split("/").some((segment) => this.isSkippedNestedDir(segment))) {
+              dirs.add(rel);
+            }
+          }
+        }
+      }
+      for (const rel of [...dirs].sort((a, b) => a.localeCompare(b))) {
+        if (workspaceFolders.some((f) => this.isSamePath(f.uri.fsPath, path.join(folder.uri.fsPath, rel)))) {
+          continue;
+        }
+        const sessionFilePath = await this.findProjectSessionFile(path.join(rootPath, rel));
+        if (sessionFilePath) {
+          results.push({ folder, relativePath: rel, sessionFilePath });
+        }
+      }
+    }
+    return results;
+  }
+  static async setNestedProjects(folder: vscode.WorkspaceFolder, relativePaths: string[]) {
+    await vscode.workspace
+      .getConfiguration(this.wsConfigurationSpace, folder.uri)
+      .update("nestedProjects", relativePaths.length > 0 ? relativePaths : undefined, vscode.ConfigurationTarget.WorkspaceFolder);
+  }
+  // How deep under each workspace folder to watch for sessions files: the
+  // scan depth, or the deepest nestedProjects entry.
+  private static getWatchDepth(): number {
+    let depth = 0;
+    for (const folder of vscode.workspace.workspaceFolders || []) {
+      depth = Math.max(depth, this.getNestedScanDepth(folder), ...this.getNestedProjects(folder).map((rel) => rel.split("/").length));
+    }
+    return Math.min(depth, 10);
   }
   static all(): Configuration[] {
     return this.scopes;
@@ -125,6 +324,14 @@ export class Configuration {
   }
   static getWorkspaceScope(): Configuration | undefined {
     return this.scopes.find((s) => s.kind === "workspace");
+  }
+  // The scope this one inherits from / falls back to in "inherit" mode:
+  // nested -> its parent scope, folder -> the workspace-level one.
+  getParentScope(): Configuration | undefined {
+    if (this.kind === "nested") {
+      return Configuration.get(this.parentId);
+    }
+    return this.kind === "folder" ? Configuration.getWorkspaceScope() : undefined;
   }
   static getMultiRootMode(): MultiRootMode {
     return this.getExperimentalConfig<MultiRootMode>("multiRootMode") === "inherit" ? "inherit" : "separate";
@@ -223,8 +430,8 @@ export class Configuration {
   }
   static async pickScope(scopes: Configuration[], title?: string): Promise<Configuration | undefined> {
     const items = scopes.map((scope) => ({
-      label: `$(${scope.kind === "workspace" ? "folder-library" : "root-folder"}) ${scope.label}`,
-      description: scope.kind === "workspace" ? "Workspace" : undefined,
+      label: `$(${Configuration.getScopeIcon(scope)}) ${scope.label}`,
+      description: scope.kind === "workspace" ? "Workspace" : scope.kind === "nested" ? "Nested project" : undefined,
       detail: scope.sessionFilePath,
       scope
     }));
@@ -237,6 +444,9 @@ export class Configuration {
     });
     return picked?.scope;
   }
+  static getScopeIcon(scope: Configuration) {
+    return scope.kind === "workspace" ? "folder-library" : scope.kind === "nested" ? "folder" : "root-folder";
+  }
   private static async filterScopes(hasFile: boolean) {
     const result: Configuration[] = [];
     for (const scope of this.scopes) {
@@ -246,12 +456,18 @@ export class Configuration {
     }
     return result;
   }
-  private static async withFallback(scope: Configuration): Promise<Configuration> {
+  // In "inherit" mode a scope without a sessions file falls back to the
+  // closest scope above it that has one.
+  static async withFallback(scope: Configuration): Promise<Configuration> {
     if (scope.kind === "workspace" || this.getMultiRootMode() !== "inherit" || (await scope.isDefinedSessionFile())) {
       return scope;
     }
-    const workspaceScope = this.getWorkspaceScope();
-    return workspaceScope && (await workspaceScope.isDefinedSessionFile()) ? workspaceScope : scope;
+    for (let parent = scope.getParentScope(); parent; parent = parent.getParentScope()) {
+      if (await parent.isDefinedSessionFile()) {
+        return parent;
+      }
+    }
+    return scope;
   }
   static getExperimentalConfig<T = any>(key: string): T | undefined {
     return vscode.workspace.getConfiguration(this.wsConfigurationSpace).get<T>(key);
@@ -286,7 +502,12 @@ export class Configuration {
     };
     const rewatch = () => {
       fileWatchers.forEach((d) => d.dispose());
-      const pattern = `{${this.getSessionFileLocations().join(",")}}`;
+      // Also covers nested projects, down to the scan depth / deepest entry.
+      const locations = this.getSessionFileLocations();
+      const depth = this.getWatchDepth();
+      const pattern = `{${Array.from({ length: depth + 1 }, (_, d) => locations.map((l) => `${"*/".repeat(d)}${l}`))
+        .flat()
+        .join(",")}}`;
       fileWatchers = this.watchRoots.map((rootPath) => {
         const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(rootPath, pattern));
         // Creating/deleting a file can change which location a scope resolves
@@ -308,7 +529,12 @@ export class Configuration {
       vscode.workspace.onDidChangeWorkspaceFolders(() => schedule("rewatch")),
       vscode.workspace.onDidChangeConfiguration((e) => {
         const ns = this.wsConfigurationSpace;
-        if (e.affectsConfiguration(`${ns}.sessionFileLocations`) || e.affectsConfiguration(`${ns}.wslSupport`)) {
+        if (
+          e.affectsConfiguration(`${ns}.sessionFileLocations`) ||
+          e.affectsConfiguration(`${ns}.wslSupport`) ||
+          e.affectsConfiguration(`${ns}.nestedProjects`) ||
+          e.affectsConfiguration(`${ns}.nestedProjectsScanDepth`)
+        ) {
           schedule("rewatch");
         } else if (e.affectsConfiguration(ns)) {
           schedule("refresh");
@@ -402,8 +628,12 @@ export class Configuration {
   // Whether a terminal without a "cwd" should start in this scope's folder
   // rather than VS Code's default (the first workspace folder, or the
   // terminal.integrated.cwd setting) - only true for the 2nd+ folders of a
-  // multi-root workspace, so single-folder behavior is unchanged.
+  // multi-root workspace, so single-folder behavior is unchanged - and for
+  // every nested project, whose terminals start in its own subfolder.
   get ownsDefaultCwd() {
+    if (this.kind === "nested") {
+      return true;
+    }
     const folders = vscode.workspace.workspaceFolders || [];
     return this.kind === "folder" && folders.length > 1 && folders[0]?.uri.toString() !== this.id;
   }
@@ -426,17 +656,23 @@ export class Configuration {
     });
     return sessionConfig;
   }
-  // The workspace-level configuration this scope inherits from, when
-  // "multiRootMode" is "inherit" and this is a folder scope.
+  // What this scope inherits when "multiRootMode" is "inherit": a folder
+  // scope from the workspace-level configuration, a nested scope from its
+  // parent scope (including whatever that one inherits itself).
   async loadInherited(): Promise<SessionConfiguration | undefined> {
-    if (this.kind !== "folder" || Configuration.getMultiRootMode() !== "inherit") {
+    if (this.kind === "workspace" || Configuration.getMultiRootMode() !== "inherit") {
       return undefined;
     }
-    const workspaceScope = Configuration.getWorkspaceScope();
-    if (!workspaceScope || !(await workspaceScope.isDefinedSessionFile())) {
+    const parent = this.getParentScope();
+    if (!parent) {
       return undefined;
     }
-    return await workspaceScope.load();
+    const parentInherited = await parent.loadInherited();
+    const parentOwn = (await parent.isDefinedSessionFile()) ? await parent.load() : undefined;
+    if (parentInherited && parentOwn) {
+      return mergeScopeConfigurations(parentInherited, parentOwn);
+    }
+    return parentOwn || parentInherited;
   }
   // What actually applies when spawning terminals: load() plus anything
   // inherited from the workspace-level configuration, plus the user's global
